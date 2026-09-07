@@ -69,3 +69,7 @@ def dispatch(name: str, args: dict[str, Any]) -> str:
     except TypeError as e:
         # Bad arguments. Tell the model so it can correct itself.
         return json.dumps({"error": f"bad arguments for {name}: {e}"})
+    except Exception as e:  # noqa: BLE001 - a failing tool is data, not a crash
+        # The tool broke. The model should hear about it and decide what to do;
+        # lesson 91 turns this into retries and graceful degradation.
+        return json.dumps({"error": f"{name} failed: {type(e).__name__}: {e}"})

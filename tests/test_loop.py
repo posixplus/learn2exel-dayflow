@@ -75,3 +75,19 @@ def test_unknown_tool_returns_error_to_model():
     loop.run("sys", "go", client=client)
     result_block = client.calls[1]["messages"][-1]["content"][0]
     assert "unknown tool" in result_block["content"]
+
+
+def test_tool_exception_becomes_error_result(monkeypatch):
+    from dayflow import tools
+
+    def boom(**_):
+        raise ValueError("inbox unavailable")
+
+    monkeypatch.setitem(tools._HANDLERS, "read_inbox", boom)
+    client = FakeClient([
+        _resp("tool_use", [_tool("read_inbox", {})]),
+        _resp("end_turn", [_text("ok")]),
+    ])
+    loop.run("sys", "go", client=client)
+    result_block = client.calls[1]["messages"][-1]["content"][0]
+    assert "inbox unavailable" in result_block["content"]

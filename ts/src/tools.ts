@@ -33,6 +33,7 @@ export function dispatch(name: string, args: Record<string, unknown>): string {
   try {
     return JSON.stringify(h(args ?? {}))
   } catch (e) {
-    return JSON.stringify({ error: `bad arguments for ${name}: ${(e as Error).message}` })
+    // A failing tool is data, not a crash. The model decides what to do with it.
+    return JSON.stringify({ error: `${name} failed: ${(e as Error).message}` })
   }
 }
