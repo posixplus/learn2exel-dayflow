@@ -1,0 +1,7 @@
+[
+  {"id": "m1", "from": "priya@acme-consulting.com", "subject": "Re: Q3 vendor review - need your sign-off by Thu", "date": "2026-09-07T07:12:00Z", "body": "Hi, attaching the final vendor comparison. Two of the three quotes came in under budget. Can you confirm by Thursday so procurement can lock it in? Thanks, Priya"},
+  {"id": "m2", "from": "noreply@dentalcare.example", "subject": "Appointment reminder: Tue Sep 9, 2:30 PM", "date": "2026-09-06T18:00:00Z", "body": "This is a reminder of your appointment on Tuesday, September 9 at 2:30 PM. Reply STOP to unsubscribe."},
+  {"id": "m3", "from": "deals@megastore.example", "subject": "FLASH SALE 70% off ends tonight!!!", "date": "2026-09-07T05:30:00Z", "body": "Don't miss out. Everything must go."},
+  {"id": "m4", "from": "sam.k@partner-labs.io", "subject": "Draft partnership one-pager", "date": "2026-09-06T21:45:00Z", "body": "Attached the one-pager we discussed. If it looks good I'll send it to their exec team Wednesday. Any edits before then?"},
+  {"id": "m5", "from": "school-office@example.org", "subject": "Field trip permission form due Friday", "date": "2026-09-05T14:00:00Z", "body": "Please return the signed permission form by Friday, September 12. Forms were sent home in backpacks."}
+]

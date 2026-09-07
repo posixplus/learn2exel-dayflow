@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: dayflow
+Version: 0.81.0
+Summary: Dayflow - the personal ops agent built across Learn2Exel Level 10 (Agentic AI Engineer)
+Requires-Python: >=3.11
+Requires-Dist: anthropic>=0.60
+Requires-Dist: python-dotenv>=1.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"

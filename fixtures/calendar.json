@@ -1,0 +1,7 @@
+[
+  {"id": "e1", "title": "Weekly staff sync", "start": "2026-09-07T13:00:00Z", "end": "2026-09-07T13:30:00Z", "attendees": ["team"]},
+  {"id": "e2", "title": "1:1 with Priya (vendor review)", "start": "2026-09-08T15:00:00Z", "end": "2026-09-08T15:30:00Z", "attendees": ["priya@acme-consulting.com"]},
+  {"id": "e3", "title": "Dentist", "start": "2026-09-09T18:30:00Z", "end": "2026-09-09T19:30:00Z", "attendees": []},
+  {"id": "e4", "title": "Partner Labs exec review prep", "start": "2026-09-09T20:00:00Z", "end": "2026-09-09T21:00:00Z", "attendees": ["sam.k@partner-labs.io"]},
+  {"id": "e5", "title": "Board call", "start": "2026-09-11T22:00:00Z", "end": "2026-09-11T23:00:00Z", "attendees": ["board"]}
+]

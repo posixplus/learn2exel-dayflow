@@ -1,0 +1,5 @@
+anthropic>=0.60
+python-dotenv>=1.0
+
+[dev]
+pytest>=8

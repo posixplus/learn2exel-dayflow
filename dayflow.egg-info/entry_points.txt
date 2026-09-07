@@ -1,0 +1,2 @@
+[console_scripts]
+dayflow = dayflow.main:main
