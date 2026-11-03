@@ -19,9 +19,9 @@ from typing import Any
 
 import anthropic
 
-from dayflow.tools import TOOLS, dispatch
+from dayflow.tools import definitions, dispatch
 
-DEFAULT_MODEL = os.environ.get("DAYFLOW_MODEL", "claude-sonnet-5")
+DEFAULT_MODEL = os.environ.get("DAYFLOW_MODEL", "claude-sonnet-5-5")
 
 
 class LoopError(RuntimeError):
@@ -48,8 +48,10 @@ def run(
     max_tokens: int = 2_048,
     client: anthropic.Anthropic | None = None,
     verbose: bool = False,
+    tools: list[dict[str, Any]] | None = None,
 ) -> RunResult:
     client = client or anthropic.Anthropic()
+    tools = definitions() if tools is None else tools
     messages: list[dict[str, Any]] = [{"role": "user", "content": user}]
     used_in = used_out = 0
     tool_log: list[dict[str, Any]] = []
@@ -59,7 +61,7 @@ def run(
             model=model,
             max_tokens=max_tokens,
             system=system,
-            tools=TOOLS,
+            tools=tools,
             messages=messages,
         )
         used_in += resp.usage.input_tokens

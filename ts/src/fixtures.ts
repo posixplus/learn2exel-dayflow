@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { ToolError } from './tools.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'fixtures')
 const load = <T>(name: string): T[] => JSON.parse(readFileSync(join(FIXTURES, `${name}.json`), 'utf8'))
@@ -24,6 +25,18 @@ export const calendar = {
   },
 }
 
+const taskState: Task[] = load<Task>('tasks')
+const byKey = new Map<string, Task>()
+
 export const tasks = {
-  listTasks: (includeDone = false): Task[] => load<Task>('tasks').filter(t => includeDone || !t.done),
+  listTasks: (includeDone = false): Task[] => taskState.filter(t => includeDone || !t.done),
+  createTask: (title: string, due: string | null, idempotencyKey: string) => {
+    if (!title.trim()) throw new ToolError('invalid_title', 'title must not be empty')
+    if (due !== null && !/^\d{4}-\d{2}-\d{2}$/.test(due)) throw new ToolError('invalid_due', `due must be YYYY-MM-DD, got ${due}`)
+    const existing = byKey.get(idempotencyKey)
+    if (existing) return { ...existing, created: false }
+    const task: Task = { id: `t${taskState.length + 1}`, title: title.trim(), due: due ?? '', done: false }
+    taskState.push(task); byKey.set(idempotencyKey, task)
+    return { ...task, created: true }
+  },
 }

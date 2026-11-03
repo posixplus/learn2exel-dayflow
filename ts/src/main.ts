@@ -1,4 +1,8 @@
-import 'dotenv/config'
+import { config } from 'dotenv'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+// .env lives at the repo root, shared with the Python side.
+config({ path: join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') })
 import { LoopError, run } from './loop.js'
 import { MORNING_BRIEF } from './prompts.js'
 

@@ -1,0 +1,34 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: cd ts && npm ci --include=dev && ./node_modules/.bin/tsc --noEmit
+
+  live:
+    # Runs the loop against the real API. Needs ANTHROPIC_API_KEY as a repo
+    # secret for now; lesson 89 replaces the secret with identity federation.
+    needs: unit
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      DAYFLOW_LIVE: "1"
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q tests/test_live.py

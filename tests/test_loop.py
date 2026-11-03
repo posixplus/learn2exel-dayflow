@@ -1,6 +1,7 @@
 """Loop tests with a fake client. No API key, no network."""
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -74,7 +75,8 @@ def test_unknown_tool_returns_error_to_model():
     ])
     loop.run("sys", "go", client=client)
     result_block = client.calls[1]["messages"][-1]["content"][0]
-    assert "unknown tool" in result_block["content"]
+    env = json.loads(result_block["content"])
+    assert env["ok"] is False and env["error"]["code"] == "unknown_tool"
 
 
 def test_tool_exception_becomes_error_result(monkeypatch):
@@ -83,11 +85,14 @@ def test_tool_exception_becomes_error_result(monkeypatch):
     def boom(**_):
         raise ValueError("inbox unavailable")
 
-    monkeypatch.setitem(tools._HANDLERS, "read_inbox", boom)
+    monkeypatch.setattr(tools.REGISTRY["read_inbox"], "handler", boom)
     client = FakeClient([
         _resp("tool_use", [_tool("read_inbox", {})]),
         _resp("end_turn", [_text("ok")]),
     ])
     loop.run("sys", "go", client=client)
     result_block = client.calls[1]["messages"][-1]["content"][0]
-    assert "inbox unavailable" in result_block["content"]
+    env = json.loads(result_block["content"])
+    assert env["ok"] is False
+    assert env["error"]["retryable"] is True
+    assert "inbox unavailable" in env["error"]["message"]

@@ -1,39 +1,83 @@
+// Lesson 82: tools are an API surface. See ../../dayflow/tools.py for the annotated version.
 import type Anthropic from '@anthropic-ai/sdk'
 import { calendar, inbox, tasks } from './fixtures.js'
 
-export const TOOLS: Anthropic.Tool[] = [
-  {
-    name: 'read_inbox',
-    description: 'List recent inbox messages, newest first. Returns id, from, subject, date, body.',
-    input_schema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 } } },
-  },
-  {
-    name: 'read_calendar',
-    description: 'List calendar events for the next N days, starting today. Returns id, title, start, end, attendees.',
-    input_schema: { type: 'object', properties: { days: { type: 'integer', minimum: 1, maximum: 14, default: 1 } } },
-  },
-  {
-    name: 'read_tasks',
-    description: 'List open tasks with due dates.',
-    input_schema: { type: 'object', properties: { include_done: { type: 'boolean', default: false } } },
-  },
-]
+export type Kind = 'read' | 'write'
 
-type Handler = (args: Record<string, unknown>) => unknown
-const HANDLERS: Record<string, Handler> = {
-  read_inbox: a => inbox.listMessages(a.limit as number | undefined),
-  read_calendar: a => calendar.listEvents(a.days as number | undefined),
-  read_tasks: a => tasks.listTasks(a.include_done as boolean | undefined),
+export class ToolError extends Error {
+  constructor(public code: string, message: string, public retryable = false) { super(message) }
 }
 
-/** Run a tool and return its result as JSON. Data, not prose. */
+export interface Tool {
+  name: string
+  description: string
+  kind: Kind
+  properties: Record<string, unknown>
+  handler: (args: Record<string, unknown>) => unknown
+}
+
+/** Strict mode: every property required, no extras, no numeric constraints. */
+function schema(t: Tool): Anthropic.Tool {
+  return {
+    name: t.name,
+    description: t.description,
+    strict: true,
+    input_schema: {
+      type: 'object',
+      properties: t.properties,
+      required: Object.keys(t.properties),
+      additionalProperties: false,
+    },
+  } as Anthropic.Tool
+}
+
+export const REGISTRY: Record<string, Tool> = {
+  read_inbox: {
+    name: 'read_inbox', kind: 'read',
+    description: 'List recent inbox messages, newest first. Returns id, from, subject, date, body.',
+    properties: { limit: { type: 'integer', description: 'How many messages to return, 1 to 50.' } },
+    handler: a => inbox.listMessages(Math.max(1, Math.min(50, a.limit as number))),
+  },
+  read_calendar: {
+    name: 'read_calendar', kind: 'read',
+    description: "List calendar events. Use 'today' for the day's schedule, 'week' for deadlines and planning.",
+    properties: { range: { type: 'string', enum: ['today', 'week'] } },
+    handler: a => calendar.listEvents(a.range === 'today' ? 1 : 7),
+  },
+  read_tasks: {
+    name: 'read_tasks', kind: 'read',
+    description: 'List tasks with due dates. Completed tasks are excluded unless include_done is true.',
+    properties: { include_done: { type: 'boolean' } },
+    handler: a => tasks.listTasks(a.include_done as boolean),
+  },
+  create_task: {
+    name: 'create_task', kind: 'write',
+    description: 'Create a task for a concrete action the user has not tracked. Reuse idempotency_key on retry.',
+    properties: {
+      title: { type: 'string', description: 'Imperative, under 80 characters' },
+      due: { type: ['string', 'null'], description: 'YYYY-MM-DD, or null' },
+      idempotency_key: { type: 'string', description: 'Stable key for this intent' },
+    },
+    handler: a => tasks.createTask(a.title as string, a.due as string | null, a.idempotency_key as string),
+  },
+}
+
+export function definitions(kinds: Kind[] = ['read', 'write']): Anthropic.Tool[] {
+  return Object.values(REGISTRY).filter(t => kinds.includes(t.kind)).map(schema)
+}
+
+const ok = (data: unknown) => JSON.stringify({ ok: true, data })
+const err = (code: string, message: string, retryable: boolean) =>
+  JSON.stringify({ ok: false, error: { code, message, retryable } })
+
+/** Run a tool and return a JSON envelope. Never throws. */
 export function dispatch(name: string, args: Record<string, unknown>): string {
-  const h = HANDLERS[name]
-  if (!h) return JSON.stringify({ error: `unknown tool: ${name}` })
+  const t = REGISTRY[name]
+  if (!t) return err('unknown_tool', `no tool named ${name}`, false)
   try {
-    return JSON.stringify(h(args ?? {}))
+    return ok(t.handler(args ?? {}))
   } catch (e) {
-    // A failing tool is data, not a crash. The model decides what to do with it.
-    return JSON.stringify({ error: `${name} failed: ${(e as Error).message}` })
+    if (e instanceof ToolError) return err(e.code, e.message, e.retryable)
+    return err('tool_failed', (e as Error).message, true)
   }
 }

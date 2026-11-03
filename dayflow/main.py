@@ -9,6 +9,7 @@ import anthropic
 from dotenv import load_dotenv
 
 from dayflow import loop, prompts
+from dayflow.tools import definitions
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,6 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--verbose", "-v", action="store_true")
     b.add_argument("--max-steps", type=int, default=10)
     b.add_argument("--token-budget", type=int, default=60_000)
+    b.add_argument("--read-only", action="store_true", help="Hand the model read tools only")
     args = parser.parse_args(argv)
 
     if os.environ.get("MOCK", "1") != "1":
@@ -33,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
                 max_steps=args.max_steps,
                 token_budget=args.token_budget,
                 verbose=args.verbose,
+                tools=definitions(("read",)) if args.read_only else None,
             )
         except loop.LoopError as e:
             print(f"loop stopped: {e}", file=sys.stderr)

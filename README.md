@@ -47,9 +47,17 @@ dayflow/
   prompts.py     system prompts, versioned separately from code
   adapters/      fixture adapters now; Gmail/Calendar adapters in lesson 87
 fixtures/        deterministic inbox, calendar, tasks (also the eval + red-team base)
-tests/           fake-client tests; no network
+tests/           fake-client tests (no network) + test_live.py (real API, DAYFLOW_LIVE=1)
 ts/              TypeScript mirror of the above
 ```
+
+## Live tests and CI
+
+`pytest` runs the unit suite with a fake client. `DAYFLOW_LIVE=1 pytest tests/test_live.py`
+runs four small real-API tests with hard token budgets (about $0.05 per run on Sonnet 5.5).
+`.github/workflows/ci.yml` runs the unit suite on every PR and the live suite on pushes to
+`main` when `ANTHROPIC_API_KEY` is set as a repository secret. Lesson 89 replaces that
+secret with identity federation.
 
 ## Mock mode
 

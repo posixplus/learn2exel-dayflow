@@ -1,5 +1,5 @@
 """Dayflow - a personal ops agent, built one lesson at a time.
 
-Lesson 81 state: the raw agent loop on the Messages API. No framework.
+Lesson 82 state: raw loop + strict tool registry with a result envelope and one idempotent write.
 """
-__version__ = "0.81.0"
+__version__ = "0.82.0"

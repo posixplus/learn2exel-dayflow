@@ -1,6 +1,6 @@
 // The agent loop, from scratch. Lesson 81. See ../../dayflow/loop.py for the annotated version.
 import Anthropic from '@anthropic-ai/sdk'
-import { TOOLS, dispatch } from './tools.js'
+import { definitions, dispatch } from './tools.js'
 
 export class LoopError extends Error {}
 
@@ -20,16 +20,18 @@ export interface RunOptions {
   maxTokens?: number
   client?: Anthropic
   verbose?: boolean
+  tools?: Anthropic.Tool[]
 }
 
 export async function run(system: string, user: string, opts: RunOptions = {}): Promise<RunResult> {
   const {
-    model = process.env.DAYFLOW_MODEL ?? 'claude-sonnet-5',
+    model = process.env.DAYFLOW_MODEL ?? 'claude-sonnet-5-5',
     maxSteps = 10,
     tokenBudget = 60_000,
     maxTokens = 2_048,
     client = new Anthropic(),
     verbose = false,
+    tools = definitions(),
   } = opts
 
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }]
@@ -37,7 +39,7 @@ export async function run(system: string, user: string, opts: RunOptions = {}): 
   const toolCalls: RunResult['toolCalls'] = []
 
   for (let step = 1; step <= maxSteps; step++) {
-    const resp = await client.messages.create({ model, max_tokens: maxTokens, system, tools: TOOLS, messages })
+    const resp = await client.messages.create({ model, max_tokens: maxTokens, system, tools, messages })
     usedIn += resp.usage.input_tokens
     usedOut += resp.usage.output_tokens
     if (verbose) console.error(`[step ${step}] stop=${resp.stop_reason} in=${resp.usage.input_tokens} out=${resp.usage.output_tokens}`)
