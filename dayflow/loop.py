@@ -97,6 +97,11 @@ def resume(
     run = store.get_run(run_id)
     if run is None:
         raise LoopError(f"no run {run_id!r}")
+    if run["kind"].endswith("-sdk"):
+        # Lesson 84: the SDK session owns that run's history. Our steps rows are
+        # an audit log, not a replayable transcript. Refuse rather than fake it.
+        raise LoopError(f"run {run_id} was driven by the Agent SDK (session {run['session_id']}); "
+                        "resume it through the SDK with --engine sdk (lesson 91), not the raw loop")
     if run["status"] == "done":
         return RunResult(run["final_text"] or "", len(store.steps(run_id)), run["input_tokens"], run["output_tokens"], "end_turn", [], run_id)
     done = store.steps(run_id)

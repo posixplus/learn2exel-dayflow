@@ -94,3 +94,15 @@ def test_sdk_brief_reads_all_sources_and_logs_steps(tmp_path):
     assert store.get_run(r.run_id)["session_id"] == r.session_id
     assert store.get_run(r.run_id)["status"] == "done"
     store.close()
+
+
+def test_raw_resume_refuses_sdk_runs(tmp_path):
+    """The steps rows of an SDK run are an audit log, not a transcript. The raw
+    loop must say so instead of replaying them into a fresh API call."""
+    from dayflow import loop
+    store = Store(tmp_path / "x.db")
+    run_id = store.create_run(kind="brief-sdk", system="s", user_msg="u", model="m")
+    store.record_sdk_totals(run_id, session_id="sess-9", input_tokens=1, output_tokens=1)
+    with pytest.raises(loop.LoopError, match="Agent SDK.*sess-9"):
+        loop.resume(run_id, store=store)
+    store.close()

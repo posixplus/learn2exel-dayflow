@@ -47,6 +47,8 @@ export async function run(system: string, user: string, opts: RunOptions = {}): 
 export async function resume(runId: string, opts: RunOptions & { store: Store }): Promise<RunResult> {
   const run = opts.store.getRun(runId)
   if (!run) throw new LoopError(`no run ${runId}`)
+  // Lesson 84: SDK-driven runs are resumed through the SDK session, not our audit rows.
+  if (run.kind.endsWith('-sdk')) throw new LoopError(`run ${runId} was driven by the Agent SDK; resume it with --engine sdk (lesson 91), not the raw loop`)
   if (run.status === 'done') {
     return { text: run.final_text ?? '', steps: opts.store.steps(runId).length, inputTokens: run.input_tokens, outputTokens: run.output_tokens, stopReason: 'end_turn', toolCalls: [], runId }
   }

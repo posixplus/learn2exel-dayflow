@@ -9,3 +9,4 @@ ts/dist/
 .DS_Store
 dayflow.db
 dayflow.db-*
+dayflow.egg-info/
