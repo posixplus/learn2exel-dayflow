@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# Blocks commits that contain likely secret VALUES in staged changes.
+# Enabled via:  git config core.hooksPath .githooks   (done automatically by
+# the package.json "prepare" script on `npm install`).
+#
+# Bypass for a genuine false positive:  git commit --no-verify
+#
+set -uo pipefail
+
+# Scan only added/modified staged lines, excluding meta files that legitimately
+# describe secret formats (this hook, the security doc, the env template).
+staged=$(git diff --cached --no-color -U0 -- . \
+  ':(exclude).githooks/pre-commit' \
+  ':(exclude)SECURITY.md' \
+  ':(exclude).env.local.example' 2>/dev/null)
+
+# Patterns match real secret VALUES, not the mere words, to limit false positives.
+patterns=(
+  'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.'   # JWT (Supabase / auth tokens)
+  'sk-(ant-)?[A-Za-z0-9_-]{20,}'                     # OpenAI / Anthropic style keys
+  'AKIA[0-9A-Z]{16}'                                 # AWS access key id
+  'AIza[0-9A-Za-z_-]{35}'                            # Google API key
+  'xox[baprs]-[0-9A-Za-z-]{10,}'                     # Slack token
+  'ghp_[A-Za-z0-9]{36}'                              # GitHub personal access token
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'               # private key block
+  '(SESSION_PASSWORD|SERVICE_ROLE_KEY|SECRET)[A-Z_]*=[A-Za-z0-9/+_-]{16,}'
+)
+
+hits=""
+while IFS= read -r line; do
+  case "$line" in
+    +++*) continue ;;   # file headers
+    +*) ;;              # added line - scan it
+    *) continue ;;      # context / removed line - skip
+  esac
+  for p in "${patterns[@]}"; do
+    if printf '%s' "$line" | grep -Eq -- "$p"; then
+      hits+="${line}"$'\n'
+      break
+    fi
+  done
+done <<< "$staged"
+
+if [ -n "$hits" ]; then
+  echo ""
+  echo "  ✖ Commit blocked: a possible secret was found in staged changes."
+  echo ""
+  echo "    Move it into .env.local (gitignored) and reference it via process.env."
+  echo "    If this is genuinely not a secret, bypass with:  git commit --no-verify"
+  echo ""
+  echo "    Flagged line(s):"
+  printf '%s' "$hits" | sed 's/^/      /'
+  echo ""
+  exit 1
+fi
+exit 0

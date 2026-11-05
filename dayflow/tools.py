@@ -18,7 +18,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
-from dayflow.adapters.fixtures import FixtureCalendar, FixtureInbox, FixtureTasks
+from dayflow.adapters.fixtures import FixtureCalendar, FixtureInbox, FixtureTasks, _load
 
 Kind = Literal["read", "write"]
 
@@ -57,7 +57,15 @@ class Tool:
 # One place to swap adapters later (lesson 87).
 inbox = FixtureInbox()
 calendar = FixtureCalendar()
-tasks = FixtureTasks()
+# Tasks: in-memory by default (tests), or the SQLite store once use_store() is called.
+tasks: Any = FixtureTasks()
+
+
+def use_store(store: Any) -> None:
+    """Point the task tools at a persistent store (lesson 83). Seeds fixtures once."""
+    global tasks
+    store.seed_tasks(_load("tasks"))
+    tasks = store
 
 # ── Read tools ───────────────────────────────────────────────────────────────
 READ_INBOX = Tool(

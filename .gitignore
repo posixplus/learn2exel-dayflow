@@ -7,3 +7,5 @@ __pycache__/
 node_modules/
 ts/dist/
 .DS_Store
+dayflow.db
+dayflow.db-*

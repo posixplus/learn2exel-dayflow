@@ -28,6 +28,9 @@ pip install -e ".[dev]"
 cp .env.example .env      # add your ANTHROPIC_API_KEY
 pytest                    # loop tests, no API key needed
 dayflow brief -v          # morning brief from fixtures (MOCK=1)
+dayflow brief --crash-after 2   # lesson 83: die after step 2 is committed
+dayflow resume -v         # continue the latest unfinished run
+dayflow runs              # list recent runs
 ```
 
 ## Quick start (TypeScript)
@@ -42,8 +45,10 @@ npm run brief -- -v
 
 ```
 dayflow/
-  loop.py        the agent loop (lesson 81)
-  tools.py       tool schemas + dispatch (lesson 82 refactors this)
+  loop.py        the agent loop (81) with per-step checkpoints and resume (83)
+  store.py       SQLite run store: runs, steps, tasks (83)
+  compact.py     history compaction primitive (83)
+  tools.py       strict tool registry + result envelope (82)
   prompts.py     system prompts, versioned separately from code
   adapters/      fixture adapters now; Gmail/Calendar adapters in lesson 87
 fixtures/        deterministic inbox, calendar, tasks (also the eval + red-team base)

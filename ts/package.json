@@ -1,10 +1,11 @@
 {
   "name": "dayflow-ts",
-  "version": "0.82.0",
+  "version": "0.83.0",
   "private": true,
   "type": "module",
   "scripts": {
     "brief": "tsx src/main.ts brief",
+    "resume": "tsx src/main.ts resume",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

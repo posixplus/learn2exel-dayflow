@@ -25,6 +25,7 @@ export const calendar = {
   },
 }
 
+export const taskSeed = (): Task[] => load<Task>('tasks')
 const taskState: Task[] = load<Task>('tasks')
 const byKey = new Map<string, Task>()
 

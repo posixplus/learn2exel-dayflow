@@ -1,6 +1,12 @@
 // Lesson 82: tools are an API surface. See ../../dayflow/tools.py for the annotated version.
 import type Anthropic from '@anthropic-ai/sdk'
-import { calendar, inbox, tasks } from './fixtures.js'
+import { calendar, inbox, tasks as fixtureTasks } from './fixtures.js'
+
+// Tasks: in-memory fixtures by default; useStore() points them at SQLite (lesson 83).
+let tasks: { listTasks: (d?: boolean) => unknown; createTask: (t: string, d: string | null, k: string) => unknown } = fixtureTasks
+export function useStore(store: { seedTasks: (t: never[]) => void; listTasks: (d?: boolean) => unknown; createTask: (t: string, d: string | null, k: string) => unknown }, seed: unknown[]) {
+  store.seedTasks(seed as never[]); tasks = store
+}
 
 export type Kind = 'read' | 'write'
 
