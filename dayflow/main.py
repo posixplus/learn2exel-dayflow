@@ -8,7 +8,7 @@ import sys
 import anthropic
 from dotenv import load_dotenv
 
-from dayflow import loop, prompts
+from dayflow import clock, loop, prompts
 from dayflow.tools import definitions, use_store
 from dayflow.store import Store
 
@@ -23,6 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--token-budget", type=int, default=60_000)
     b.add_argument("--read-only", action="store_true", help="Hand the model read tools only")
     b.add_argument("--crash-after", type=int, default=None, metavar="N", help="Simulate a crash after step N (lesson 83)")
+    b.add_argument("--engine", choices=["raw", "sdk"], default="raw",
+                   help="raw = the hand-written loop (lessons 81-83); sdk = Claude Agent SDK (lesson 84)")
     r = sub.add_parser("resume", help="Continue the latest unfinished run (or a given id)")
     r.add_argument("run_id", nargs="?", default=None)
     r.add_argument("--verbose", "-v", action="store_true")
@@ -60,11 +62,36 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n[resumed {run_id} · finished at step {result.steps} · {result.input_tokens} in / {result.output_tokens} out total]", file=sys.stderr)
         return 0
 
+    if args.cmd == "brief" and args.engine == "sdk":
+        import asyncio
+        from dayflow import sdk_agent
+        if args.crash_after is not None:
+            print("--crash-after is a raw-loop flag; the SDK owns checkpoints now (resume with --engine sdk later)", file=sys.stderr)
+        try:
+            result = asyncio.run(sdk_agent.run_brief(
+                store=store,
+                kinds=("read",) if args.read_only else ("read", "write"),
+                verbose=args.verbose,
+                max_turns=args.max_steps,
+            ))
+        except RuntimeError as e:
+            print(f"sdk run stopped: {e}", file=sys.stderr)
+            return 1
+        print(result.text)
+        cost = f" · ${result.cost_usd:.4f}" if result.cost_usd is not None else ""
+        print(
+            f"\n[sdk · {result.num_turns} turns · {len(result.tool_calls)} tool calls · "
+            f"{result.input_tokens} in (+{result.cache_read_tokens} cached) / {result.output_tokens} out{cost} · "
+            f"run {result.run_id} · session {result.session_id}]",
+            file=sys.stderr,
+        )
+        return 0
+
     if args.cmd == "brief":
         try:
             result = loop.run(
                 prompts.MORNING_BRIEF,
-                "Give me my morning brief for today.",
+                prompts.brief_request(clock.today()),
                 max_steps=args.max_steps,
                 token_budget=args.token_budget,
                 verbose=args.verbose,

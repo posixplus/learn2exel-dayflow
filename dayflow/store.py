@@ -87,6 +87,15 @@ class Store:
         self._conn.execute("PRAGMA journal_mode=WAL")   # readers never block the writer
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Lesson 84: runs driven by the Agent SDK carry its session_id, because
+        the SDK session (not our steps table) is what resumes them. ADD COLUMN
+        on an existing database is the smallest honest migration."""
+        cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(runs)")}
+        if "session_id" not in cols:
+            self._conn.execute("ALTER TABLE runs ADD COLUMN session_id TEXT")
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -124,6 +133,15 @@ class Store:
     def fail_run(self, run_id: str, *, error: str) -> None:
         with self.tx() as c:
             c.execute("UPDATE runs SET status='failed', error=?, updated_at=? WHERE id=?", (error, _now(), run_id))
+
+    def record_sdk_totals(self, run_id: str, *, session_id: str, input_tokens: int, output_tokens: int) -> None:
+        """SDK runs report usage once, at the end. Store it on the run and keep
+        the SDK's session_id so the run can be resumed through the SDK."""
+        with self.tx() as c:
+            c.execute(
+                "UPDATE runs SET session_id=?, input_tokens=?, output_tokens=?, updated_at=? WHERE id=?",
+                (session_id, input_tokens, output_tokens, _now(), run_id),
+            )
 
     # ── steps ──
     def append_step(self, run_id: str, step: StepRow) -> None:

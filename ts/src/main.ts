@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 // .env lives at the repo root, shared with the Python side.
 config({ path: join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') })
 import { LoopError, resume, run } from './loop.js'
-import { MORNING_BRIEF } from './prompts.js'
+import { today } from './clock.js'
+import { MORNING_BRIEF, briefRequest } from './prompts.js'
 import { Store } from './store.js'
 import { useStore } from './tools.js'
 import { taskSeed } from './fixtures.js'
@@ -35,9 +36,21 @@ if (cmd === 'resume') {
   }
 }
 
+const engineIdx = rest.indexOf('--engine')
+const engine = engineIdx >= 0 ? rest[engineIdx + 1] : 'raw'
+
+if (cmd === 'brief' && engine === 'sdk') {
+  const { runBrief } = await import('./sdkAgent.js')
+  const r = await runBrief({ store, verbose, kinds: rest.includes('--read-only') ? ['read'] : ['read', 'write'] })
+  console.log(r.text)
+  const cost = r.costUsd == null ? '' : ` · $${r.costUsd.toFixed(4)}`
+  console.error(`\n[sdk · ${r.numTurns} turns · ${r.toolCalls.length} tool calls · ${r.inputTokens} in (+${r.cacheReadTokens} cached) / ${r.outputTokens} out${cost} · run ${r.runId} · session ${r.sessionId}]`)
+  process.exit(0)
+}
+
 if (cmd === 'brief') {
   try {
-    const r = await run(MORNING_BRIEF, 'Give me my morning brief for today.', { verbose, store, crashAfterStep })
+    const r = await run(MORNING_BRIEF, briefRequest(today()), { verbose, store, crashAfterStep })
     console.log(r.text)
     console.error(`\n[${r.steps} steps · ${r.toolCalls.length} tool calls · ${r.inputTokens} in / ${r.outputTokens} out · run ${r.runId}]`)
   } catch (e) {

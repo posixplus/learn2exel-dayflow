@@ -1,0 +1,148 @@
+// Lesson 84: Dayflow on the Claude Agent SDK. Mirror of ../../dayflow/sdk_agent.py.
+//
+// The registry (tools.ts), the envelope and the store are untouched. The SDK
+// takes over the loop, permissions, session persistence and compaction. One
+// TypeScript-specific wrinkle: the SDK's tool() wants a Zod shape, not JSON
+// Schema, so we translate the four property shapes the registry uses.
+import {
+  createSdkMcpServer,
+  query,
+  tool,
+  type HookCallback,
+  type PostToolUseHookInput,
+  type SDKMessage,
+  type SDKResultMessage,
+} from '@anthropic-ai/claude-agent-sdk'
+import { z, type ZodTypeAny } from 'zod'
+import { today } from './clock.js'
+import { MORNING_BRIEF, briefRequest } from './prompts.js'
+import type { Store } from './store.js'
+import { REGISTRY, dispatch, type Kind, type Tool } from './tools.js'
+
+export const SERVER = 'dayflow'
+
+// ── JSON Schema property → Zod. Covers exactly what the registry declares. ──
+type Prop = { type: string | string[]; enum?: string[]; description?: string }
+function zodFor(p: Prop): ZodTypeAny {
+  const types = Array.isArray(p.type) ? p.type : [p.type]
+  const nullable = types.includes('null')
+  const base = types.find(t => t !== 'null') ?? 'string'
+  let s: ZodTypeAny =
+    p.enum ? z.enum(p.enum as [string, ...string[]])
+    : base === 'integer' ? z.number().int()
+    : base === 'number' ? z.number()
+    : base === 'boolean' ? z.boolean()
+    : z.string()
+  if (p.description) s = s.describe(p.description)
+  return nullable ? s.nullable() : s
+}
+
+function asMcpTool(t: Tool) {
+  const shape = Object.fromEntries(Object.entries(t.properties).map(([k, v]) => [k, zodFor(v as Prop)]))
+  return tool(t.name, t.description, shape, async args => {
+    // Same dispatch, same envelope. No isError: the model branches on `ok`.
+    const envelope = dispatch(t.name, args as Record<string, unknown>)
+    return { content: [{ type: 'text' as const, text: envelope }] }
+  })
+}
+
+export function buildServer(kinds: Kind[] = ['read', 'write']) {
+  return createSdkMcpServer({
+    name: SERVER, version: '0.84.0',
+    tools: Object.values(REGISTRY).filter(t => kinds.includes(t.kind)).map(asMcpTool),
+  })
+}
+
+export function toolNames(kinds: Kind[] = ['read', 'write']): string[] {
+  return Object.values(REGISTRY).filter(t => kinds.includes(t.kind)).map(t => `mcp__${SERVER}__${t.name}`)
+}
+const short = (n: string) => n.replace(`mcp__${SERVER}__`, '')
+
+export interface SdkResult {
+  text: string; sessionId: string; numTurns: number
+  toolCalls: Array<{ name: string; input: unknown }>
+  inputTokens: number; outputTokens: number; cacheReadTokens: number
+  costUsd: number | null; runId: string | null
+}
+
+export async function runBrief(opts: {
+  store?: Store; kinds?: Kind[]; verbose?: boolean; maxTurns?: number; maxBudgetUsd?: number; model?: string; resume?: string
+} = {}): Promise<SdkResult> {
+  const kinds = opts.kinds ?? ['read', 'write']
+  const model = opts.model ?? process.env.DAYFLOW_MODEL ?? 'claude-sonnet-5-5'
+  const store = opts.store
+  const userMsg = briefRequest(today())
+  const runId = store ? store.createRun({ kind: 'brief-sdk', system: MORNING_BRIEF, userMsg, model }) : null
+  const toolCalls: SdkResult['toolCalls'] = []
+  let n = 0
+
+  // PostToolUse: one audit row per tool call, in lesson 83's steps table.
+  const recordStep: HookCallback = async input => {
+    const h = input as PostToolUseHookInput
+    const name = short(h.tool_name)
+    n += 1
+    toolCalls.push({ name, input: h.tool_input })
+    if (opts.verbose) console.error(`  ↳ ${name}(${JSON.stringify(h.tool_input)})`)
+    if (store && runId) store.appendStep(runId, {
+      n, stopReason: 'tool_use',
+      assistant: [{ type: 'tool_use', id: h.tool_use_id, name, input: h.tool_input as Record<string, unknown> }],
+      toolResults: [{ type: 'tool_result', tool_use_id: h.tool_use_id, content: JSON.stringify(h.tool_response) }],
+      inputTokens: 0, outputTokens: 0,
+    })
+    return {}
+  }
+
+  const q = query({
+    prompt: userMsg,
+    options: {
+      systemPrompt: MORNING_BRIEF,
+      mcpServers: { [SERVER]: buildServer(kinds) },
+      strictMcpConfig: true,
+      settingSources: [],
+      tools: [],                       // the registry is the whole surface; no Read/Bash/Edit
+      allowedTools: toolNames(kinds),
+      permissionMode: 'default',
+      maxTurns: opts.maxTurns ?? 8,
+      maxBudgetUsd: opts.maxBudgetUsd ?? 0.25,
+      model,
+      resume: opts.resume,
+      hooks: { PostToolUse: [{ matcher: `mcp__${SERVER}__.*`, hooks: [recordStep] }] },
+    },
+  })
+
+  const parts: string[] = []
+  let result: SDKResultMessage | undefined
+  try {
+    for await (const msg of q as AsyncIterable<SDKMessage>) {
+      if (msg.type === 'assistant') {
+        for (const b of msg.message.content) {
+          if (b.type === 'text') parts.push(b.text)
+          else if (b.type === 'tool_use' && opts.verbose) console.error(`  → ${short(b.name)}`)
+        }
+      } else if (msg.type === 'result') result = msg
+    }
+  } catch (e) {
+    if (store && runId) store.failRun(runId, String(e))
+    throw e
+  }
+  if (!result) throw new Error('SDK stream ended without a result message')
+  if (result.is_error || result.subtype !== 'success') {
+    const msg = `${result.subtype}: ${('errors' in result ? result.errors : []).join('; ')}`
+    if (store && runId) store.failRun(runId, msg)
+    throw new Error(msg)
+  }
+
+  const text = parts.filter(p => p.trim()).join('\n') || result.result
+  const u = result.usage
+  const out: SdkResult = {
+    text, sessionId: result.session_id, numTurns: result.num_turns, toolCalls,
+    inputTokens: u.input_tokens ?? 0, outputTokens: u.output_tokens ?? 0,
+    cacheReadTokens: u.cache_read_input_tokens ?? 0,
+    costUsd: result.total_cost_usd ?? null, runId,
+  }
+  if (store && runId) {
+    store.finishRun(runId, text)
+    store.recordSdkTotals(runId, out.sessionId, out.inputTokens + out.cacheReadTokens, out.outputTokens)
+  }
+  return out
+}

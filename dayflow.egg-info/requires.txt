@@ -1,5 +1,6 @@
 anthropic>=0.60
 python-dotenv>=1.0
+claude-agent-sdk>=0.2
 
 [dev]
 pytest>=8

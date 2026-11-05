@@ -23,3 +23,8 @@ You may call create_task for a concrete action the user has not tracked yet; use
 stable idempotency_key so a retry does not duplicate it. Never create more than two.
 
 Rules: be concise and never invent details."""
+
+
+def brief_request(today: str) -> str:
+    """The user turn. The date is stated, not assumed (lesson 84 found the gap)."""
+    return f"Today is {today}. Give me my morning brief for today."

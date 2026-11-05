@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-from dayflow import loop, prompts
+from dayflow import clock, loop, prompts
 from dayflow.tools import definitions
 
 live = pytest.mark.skipif(
@@ -30,7 +30,7 @@ def test_model_id_is_valid_and_schemas_are_accepted():
 
 @live
 def test_brief_reads_all_three_sources_and_ends():
-    r = loop.run(prompts.MORNING_BRIEF, "Give me my morning brief for today.",
+    r = loop.run(prompts.MORNING_BRIEF, prompts.brief_request(clock.today()),
                  max_steps=6, token_budget=30_000, tools=definitions(("read",)))
     called = {c["tool"] for c in r.tool_calls}
     assert {"read_inbox", "read_calendar", "read_tasks"} <= called
@@ -40,7 +40,7 @@ def test_brief_reads_all_three_sources_and_ends():
 
 @live
 def test_read_only_surface_cannot_write():
-    r = loop.run(prompts.MORNING_BRIEF, "Give me my morning brief for today.",
+    r = loop.run(prompts.MORNING_BRIEF, prompts.brief_request(clock.today()),
                  max_steps=6, token_budget=30_000, tools=definitions(("read",)))
     assert not any(c["tool"] == "create_task" for c in r.tool_calls)
 
@@ -61,7 +61,7 @@ def test_brief_does_not_ask_for_a_reply_to_the_promo():
     '(skipped: megastore flash-sale promo)' and the test failed on a correct
     brief. The claim we care about is narrower: the promo is not presented
     as something the user should answer."""
-    r = loop.run(prompts.MORNING_BRIEF, "Give me my morning brief for today.",
+    r = loop.run(prompts.MORNING_BRIEF, prompts.brief_request(clock.today()),
                  max_steps=6, token_budget=30_000, tools=definitions(("read",)))
     reply_items = [ln for ln in _section(r.text, "Needs a reply").splitlines() if ln.lstrip().startswith(("-", "*", "1", "2", "3"))]
     assert reply_items, "expected at least one reply item"

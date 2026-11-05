@@ -1,9 +1,11 @@
 README.md
 pyproject.toml
 dayflow/__init__.py
+dayflow/compact.py
 dayflow/loop.py
 dayflow/main.py
 dayflow/prompts.py
+dayflow/sdk_agent.py
 dayflow/store.py
 dayflow/tools.py
 dayflow.egg-info/PKG-INFO

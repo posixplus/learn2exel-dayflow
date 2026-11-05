@@ -1,11 +1,12 @@
 [project]
 name = "dayflow"
-version = "0.83.0"
+version = "0.84.0"
 description = "Dayflow - the personal ops agent built across Learn2Exel Level 10 (Agentic AI Engineer)"
 requires-python = ">=3.11"
 dependencies = [
   "anthropic>=0.60",
   "python-dotenv>=1.0",
+  "claude-agent-sdk>=0.2",
 ]
 
 [project.optional-dependencies]

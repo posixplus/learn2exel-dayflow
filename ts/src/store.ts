@@ -37,6 +37,16 @@ export class Store {
     this.db = new DatabaseSync(path)
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;')
     this.db.exec(SCHEMA)
+    this.migrate()
+  }
+  /** Lesson 84: SDK-driven runs carry the SDK session_id (the SDK owns resume now). */
+  private migrate() {
+    const cols = new Set((this.db.prepare('PRAGMA table_info(runs)').all() as Array<{ name: string }>).map(c => c.name))
+    if (!cols.has('session_id')) this.db.exec('ALTER TABLE runs ADD COLUMN session_id TEXT')
+  }
+  recordSdkTotals(id: string, sessionId: string, inputTokens: number, outputTokens: number) {
+    this.tx(() => this.db.prepare('UPDATE runs SET session_id=?, input_tokens=?, output_tokens=?, updated_at=? WHERE id=?')
+      .run(sessionId, inputTokens, outputTokens, now(), id))
   }
   private tx<T>(fn: () => T): T {
     this.db.exec('BEGIN')
