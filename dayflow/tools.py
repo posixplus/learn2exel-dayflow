@@ -72,16 +72,22 @@ READ_INBOX = Tool(
     name="read_inbox",
     kind="read",
     description=(
-        "List recent inbox messages, newest first. Returns id, from, subject, date, body. "
+        "List inbox messages, newest first, one page at a time. Returns {messages, total, next_offset}; "
+        "next_offset is null on the last page. Page through a backlog with limit 25 and offset 0, 25, 50... "
         "Promotions and automated reminders are included; the caller decides what matters."
     ),
     properties={
         # Strict mode does not accept minimum/maximum on numbers. State the
         # bound in the description and enforce it in the handler.
         "limit": {"type": "integer",
-                  "description": "How many messages to return, 1 to 50. 20 is enough for a daily brief."},
+                  "description": "Messages per page, 1 to 50. 20 is enough for a daily brief."},
+        # Lesson 85: a 120-message inbox is ~66 KB as one tool result, and the
+        # Agent SDK harness persists results that large to disk and shows the
+        # model a 2 KB preview. Pages keep every result small. Pagination is
+        # also simply the right API (lesson 82); the big inbox just made it urgent.
+        "offset": {"type": "integer", "description": "0-based index of the first message to return."},
     },
-    handler=lambda limit: inbox.list_messages(limit=max(1, min(50, limit))),
+    handler=lambda limit, offset: inbox.list_messages(limit=max(1, min(50, limit)), offset=max(0, offset)),
 )
 
 READ_CALENDAR = Tool(

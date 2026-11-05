@@ -39,6 +39,16 @@ if (cmd === 'resume') {
 const engineIdx = rest.indexOf('--engine')
 const engine = engineIdx >= 0 ? rest[engineIdx + 1] : 'raw'
 
+if (cmd === 'brief' && engine === 'orch') {
+  const { runBrief, costTable, totals } = await import('./orchestrate.js')
+  const t0 = performance.now()
+  const r = await runBrief({ store, verbose })
+  console.log(r.text)
+  console.error(`\n${costTable(r)}`)
+  console.error(`[orch · ${r.legs.length} legs · $${totals(r).costUsd.toFixed(4)} · ${((performance.now() - t0) / 1000).toFixed(1)}s wall · run ${r.runId}]`)
+  process.exit(0)
+}
+
 if (cmd === 'brief' && engine === 'sdk') {
   const { runBrief } = await import('./sdkAgent.js')
   const r = await runBrief({ store, verbose, kinds: rest.includes('--read-only') ? ['read'] : ['read', 'write'] })

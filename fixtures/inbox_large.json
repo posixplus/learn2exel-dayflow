@@ -1,0 +1,842 @@
+[
+ {
+  "id": "m1",
+  "from": "priya@acme-consulting.com",
+  "subject": "Re: Q3 vendor review - need your sign-off by Thu",
+  "date": "2026-09-07T07:12:00Z",
+  "body": "Hi, attaching the final vendor comparison. Two of the three quotes came in under budget. Can you confirm by Thursday so procurement can lock it in? Thanks, Priya"
+ },
+ {
+  "id": "m2",
+  "from": "noreply@dentalcare.example",
+  "subject": "Appointment reminder: Wed Sep 9, 2:30 PM",
+  "date": "2026-09-06T18:00:00Z",
+  "body": "This is a reminder of your appointment on Wednesday, September 9 at 2:30 PM. Reply STOP to unsubscribe."
+ },
+ {
+  "id": "m3",
+  "from": "deals@megastore.example",
+  "subject": "FLASH SALE 70% off ends tonight!!!",
+  "date": "2026-09-07T05:30:00Z",
+  "body": "Don't miss out. Everything must go."
+ },
+ {
+  "id": "m4",
+  "from": "sam.k@partner-labs.io",
+  "subject": "Draft partnership one-pager",
+  "date": "2026-09-06T21:45:00Z",
+  "body": "Attached the one-pager we discussed. If it looks good I'll send it to their exec team Wednesday. Any edits before then?"
+ },
+ {
+  "id": "m5",
+  "from": "school-office@example.org",
+  "subject": "Field trip permission form due Friday",
+  "date": "2026-09-05T14:00:00Z",
+  "body": "Please return the signed permission form by Friday, September 11. Forms were sent home in backpacks."
+ },
+ {
+  "id": "m6",
+  "from": "lena@brightpath.design",
+  "subject": "Logo revisions - which direction?",
+  "date": "2026-09-02T18:39:00Z",
+  "body": "Hi! Attached are three directions for the refreshed logo. Direction B keeps the current mark but modernises the type; C is the bolder departure we discussed. I need a pick by Thursday to stay on schedule for the print run. Any direction is fine, I just need a decision. Thanks, Lena"
+ },
+ {
+  "id": "m7",
+  "from": "coach.ramos@example.org",
+  "subject": "Saturday practice moved to 9am - can you still drive?",
+  "date": "2026-09-07T08:20:00Z",
+  "body": "Hi all, the field is double-booked so Saturday practice moves from 10 to 9am. I have you down for carpool that morning. Can you confirm you can still make the earlier time? If not I will ask one of the other parents. Thanks, Coach Ramos"
+ },
+ {
+  "id": "m8",
+  "from": "devi@neighbourhood-watch.example",
+  "subject": "Quick question about the shared fence",
+  "date": "2026-09-02T10:29:00Z",
+  "body": "Hello neighbour, the fence between our yards lost two boards in the storm. I got a quote for $380 to replace the section. Happy to split it 50/50 if that works for you. Let me know and I will book them for next week. Devi"
+ },
+ {
+  "id": "m9",
+  "from": "hr-benefits@corp.example",
+  "subject": "ACTION REQUIRED: confirm beneficiary by 9/12",
+  "date": "2026-09-07T19:54:00Z",
+  "body": "Our records show your beneficiary designation has not been reviewed this year. Please log in to the benefits portal and confirm or update it by September 12. This takes about two minutes. If no action is taken the current designation stays in place. HR Benefits Team"
+ },
+ {
+  "id": "m10",
+  "from": "marcus@local-news.example",
+  "subject": "Interview request - 15 minutes this week?",
+  "date": "2026-09-03T16:14:00Z",
+  "body": "Hi, I am writing a short piece on neighbourhood volunteer groups and your name came up twice. Would you have 15 minutes for a phone call this week? Any afternoon works. If not, a couple of sentences by email would also be great. Marcus"
+ },
+ {
+  "id": "m11",
+  "from": "tenant.j@example.com",
+  "subject": "Heating making a clicking sound",
+  "date": "2026-09-06T13:34:00Z",
+  "body": "Hi, the heating unit has started making a clicking noise when it kicks on, maybe every 20 minutes. It still works fine. Not urgent but wanted to flag it before it gets colder. Should I call someone or will you arrange it? Thanks, J"
+ },
+ {
+  "id": "m12",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-06T17:04:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m13",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-04T22:07:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. Thanks for being part of the community. We send one of these a week and never share your address with anyone. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m14",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-01T14:45:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m15",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-02T05:23:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m16",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-02T15:28:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m17",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-07T20:56:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Thanks for being part of the community. We send one of these a week and never share your address with anyone. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m18",
+  "from": "news@citycouncil.example",
+  "subject": "Council newsletter - September edition",
+  "date": "2026-09-02T17:16:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m19",
+  "from": "hello@recipebox.example",
+  "subject": "7 weeknight dinners under 30 minutes",
+  "date": "2026-09-06T14:59:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m20",
+  "from": "club@gymchain.example",
+  "subject": "Bring a friend free in September",
+  "date": "2026-09-02T09:30:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m21",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-02T06:31:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m22",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-01T01:38:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Thanks for being part of the community. We send one of these a week and never share your address with anyone. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m23",
+  "from": "digest@industrynews.example",
+  "subject": "Procurement Weekly: tariffs, timelines and three case studies",
+  "date": "2026-09-04T08:59:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m24",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-07T08:09:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m25",
+  "from": "weekly@techdigest.example",
+  "subject": "This week in AI: five things that mattered",
+  "date": "2026-09-03T03:45:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m26",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-07T23:55:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m27",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-03T03:48:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m28",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-01T12:29:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m29",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-02T21:37:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m30",
+  "from": "support@saas.example",
+  "subject": "[Ticket #606] We've received your request",
+  "date": "2026-09-02T10:13:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m31",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-05T19:47:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m32",
+  "from": "alerts@bank.example",
+  "subject": "A payment of $81.72 was made from your account",
+  "date": "2026-09-05T23:51:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m33",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-01T03:04:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m34",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-06T07:58:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m35",
+  "from": "weekly@techdigest.example",
+  "subject": "This week in AI: five things that mattered",
+  "date": "2026-09-06T18:55:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m36",
+  "from": "digest@industrynews.example",
+  "subject": "Procurement Weekly: tariffs, timelines and three case studies",
+  "date": "2026-09-06T15:19:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m37",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-01T22:29:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m38",
+  "from": "team@productivityapp.example",
+  "subject": "What's new: templates, dark mode, and faster sync",
+  "date": "2026-09-07T16:48:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Thanks for being part of the community. We send one of these a week and never share your address with anyone. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m39",
+  "from": "support@saas.example",
+  "subject": "[Ticket #927] We've received your request",
+  "date": "2026-09-07T14:34:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m40",
+  "from": "digest@industrynews.example",
+  "subject": "Procurement Weekly: tariffs, timelines and three case studies",
+  "date": "2026-09-02T07:52:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Thanks for being part of the community. We send one of these a week and never share your address with anyone. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m41",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-05T04:58:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m42",
+  "from": "deals@megastore.example",
+  "subject": "Last chance: 60% off everything in outdoor",
+  "date": "2026-09-01T23:55:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m43",
+  "from": "ci@github-notify.example",
+  "subject": "[dayflow] CI passed on main (#770)",
+  "date": "2026-09-06T12:23:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m44",
+  "from": "support@saas.example",
+  "subject": "[Ticket #456] We've received your request",
+  "date": "2026-09-03T06:13:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m45",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-02T16:26:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m46",
+  "from": "alerts@bank.example",
+  "subject": "A payment of $166.77 was made from your account",
+  "date": "2026-09-05T22:19:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m47",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-04T10:39:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m48",
+  "from": "support@saas.example",
+  "subject": "[Ticket #446] We've received your request",
+  "date": "2026-09-05T16:22:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m49",
+  "from": "ci@github-notify.example",
+  "subject": "[dayflow] CI passed on main (#118)",
+  "date": "2026-09-05T14:40:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m50",
+  "from": "hello@recipebox.example",
+  "subject": "7 weeknight dinners under 30 minutes",
+  "date": "2026-09-07T12:30:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m51",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-05T12:15:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m52",
+  "from": "team@productivityapp.example",
+  "subject": "What's new: templates, dark mode, and faster sync",
+  "date": "2026-09-05T09:33:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Thanks for being part of the community. We send one of these a week and never share your address with anyone. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m53",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-05T18:24:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m54",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-06T21:32:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m55",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-06T07:24:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m56",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-03T23:24:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m57",
+  "from": "team@productivityapp.example",
+  "subject": "What's new: templates, dark mode, and faster sync",
+  "date": "2026-09-06T19:54:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m58",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-04T21:39:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m59",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-05T15:11:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m60",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-05T00:42:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m61",
+  "from": "deals@megastore.example",
+  "subject": "Last chance: 60% off everything in outdoor",
+  "date": "2026-09-01T12:23:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m62",
+  "from": "ci@github-notify.example",
+  "subject": "[dayflow] CI failed on branch feature/resume (#753)",
+  "date": "2026-09-03T17:31:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m63",
+  "from": "deals@megastore.example",
+  "subject": "Last chance: 60% off everything in outdoor",
+  "date": "2026-09-02T12:10:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m64",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-01T05:02:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m65",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-03T19:19:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m66",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-04T14:23:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m67",
+  "from": "alerts@bank.example",
+  "subject": "A payment of $197.95 was made from your account",
+  "date": "2026-09-06T21:34:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m68",
+  "from": "support@saas.example",
+  "subject": "[Ticket #386] We've received your request",
+  "date": "2026-09-02T21:09:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m69",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-03T08:34:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m70",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-07T14:24:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m71",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-07T23:51:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m72",
+  "from": "club@gymchain.example",
+  "subject": "Bring a friend free in September",
+  "date": "2026-09-04T08:45:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m73",
+  "from": "news@citycouncil.example",
+  "subject": "Council newsletter - September edition",
+  "date": "2026-09-03T21:48:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m74",
+  "from": "ci@github-notify.example",
+  "subject": "[dayflow] CI passed on main (#966)",
+  "date": "2026-09-05T19:00:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m75",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-06T18:29:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m76",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-02T15:52:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m77",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-05T01:13:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m78",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-03T06:46:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m79",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-06T14:24:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m80",
+  "from": "hello@recipebox.example",
+  "subject": "7 weeknight dinners under 30 minutes",
+  "date": "2026-09-01T18:48:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m81",
+  "from": "news@citycouncil.example",
+  "subject": "Council newsletter - September edition",
+  "date": "2026-09-02T05:28:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m82",
+  "from": "alerts@bank.example",
+  "subject": "A payment of $73.16 was made from your account",
+  "date": "2026-09-06T06:55:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m83",
+  "from": "support@saas.example",
+  "subject": "[Ticket #545] We've received your request",
+  "date": "2026-09-03T13:16:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m84",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-06T11:05:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m85",
+  "from": "hello@recipebox.example",
+  "subject": "7 weeknight dinners under 30 minutes",
+  "date": "2026-09-07T17:13:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m86",
+  "from": "news@citycouncil.example",
+  "subject": "Council newsletter - September edition",
+  "date": "2026-09-02T16:07:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m87",
+  "from": "club@gymchain.example",
+  "subject": "Bring a friend free in September",
+  "date": "2026-09-03T04:14:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m88",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-07T05:13:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m89",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-03T02:01:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m90",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-03T00:23:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m91",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-04T04:15:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m92",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-05T12:47:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m93",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-07T22:39:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m94",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-06T23:15:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m95",
+  "from": "promo@coffeeclub.example",
+  "subject": "Your September roast is here (plus 20% off)",
+  "date": "2026-09-05T06:10:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m96",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-03T06:08:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m97",
+  "from": "offers@airline.example",
+  "subject": "Fares from $59 - book by Friday",
+  "date": "2026-09-04T06:34:00Z",
+  "body": "Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m98",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-06T19:31:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m99",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-07T00:05:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m100",
+  "from": "club@gymchain.example",
+  "subject": "Bring a friend free in September",
+  "date": "2026-09-02T20:03:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m101",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-07T02:59:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m102",
+  "from": "club@gymchain.example",
+  "subject": "Bring a friend free in September",
+  "date": "2026-09-02T15:34:00Z",
+  "body": "Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m103",
+  "from": "hello@recipebox.example",
+  "subject": "7 weeknight dinners under 30 minutes",
+  "date": "2026-09-02T15:48:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m104",
+  "from": "calendar-noreply@example.com",
+  "subject": "Accepted: Weekly staff sync",
+  "date": "2026-09-03T03:10:00Z",
+  "body": "Thanks for being part of the community. We send one of these a week and never share your address with anyone. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m105",
+  "from": "security@cloudhost.example",
+  "subject": "New sign-in to your account from Chrome on macOS",
+  "date": "2026-09-05T07:55:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m106",
+  "from": "promo@coffeeclub.example",
+  "subject": "Your September roast is here (plus 20% off)",
+  "date": "2026-09-02T13:21:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m107",
+  "from": "noreply@utility.example",
+  "subject": "Your statement is ready",
+  "date": "2026-09-03T11:18:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes."
+ },
+ {
+  "id": "m108",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-04T11:39:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m109",
+  "from": "club@gymchain.example",
+  "subject": "Bring a friend free in September",
+  "date": "2026-09-03T02:13:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m110",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-03T16:49:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. Thanks for being part of the community. We send one of these a week and never share your address with anyone."
+ },
+ {
+  "id": "m111",
+  "from": "weekly@techdigest.example",
+  "subject": "This week in AI: five things that mattered",
+  "date": "2026-09-07T09:20:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m112",
+  "from": "noreply@pharmacy.example",
+  "subject": "Your prescription is ready for pickup",
+  "date": "2026-09-05T12:56:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message."
+ },
+ {
+  "id": "m113",
+  "from": "weekly@techdigest.example",
+  "subject": "This week in AI: five things that mattered",
+  "date": "2026-09-06T02:21:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients."
+ },
+ {
+  "id": "m114",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-02T11:55:00Z",
+  "body": "To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m115",
+  "from": "alerts@bank.example",
+  "subject": "A payment of $162.28 was made from your account",
+  "date": "2026-09-05T00:30:00Z",
+  "body": "We have been working hard on this release and we think you are going to like what we shipped. Read on for the highlights, or jump straight into the app."
+ },
+ {
+  "id": "m116",
+  "from": "editor@longform.example",
+  "subject": "Sunday Longreads: the quiet history of the shipping container",
+  "date": "2026-09-06T20:34:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Thanks for being part of the community. We send one of these a week and never share your address with anyone. Terms and conditions apply. Offer valid while stocks last and cannot be combined with other discounts or promotional codes. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ },
+ {
+  "id": "m117",
+  "from": "alerts@bank.example",
+  "subject": "A payment of $42.29 was made from your account",
+  "date": "2026-09-06T18:20:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. Highlights this week include three long reads, one interview and a short note from the editor about what we are planning for the autumn."
+ },
+ {
+  "id": "m118",
+  "from": "receipts@rideshare.example",
+  "subject": "Your Tuesday trip receipt",
+  "date": "2026-09-01T23:17:00Z",
+  "body": "If you no longer wish to receive these emails you can update your preferences at any time from the link at the bottom of this message. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m119",
+  "from": "promo@coffeeclub.example",
+  "subject": "Your September roast is here (plus 20% off)",
+  "date": "2026-09-02T15:14:00Z",
+  "body": "You are receiving this because you signed up on our website or made a purchase with us in the last twelve months. This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance. To view this message in your browser, click the link at the top of the email. Images may not display correctly in some clients. You are receiving this because you signed up on our website or made a purchase with us in the last twelve months."
+ },
+ {
+  "id": "m120",
+  "from": "calendar-noreply@example.com",
+  "subject": "Updated invitation: 1:1 with Priya",
+  "date": "2026-09-02T05:55:00Z",
+  "body": "This message was sent automatically. Replies to this address are not monitored, so please use the help centre if you need assistance."
+ }
+]

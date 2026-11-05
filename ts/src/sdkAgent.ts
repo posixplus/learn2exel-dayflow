@@ -46,17 +46,36 @@ function asMcpTool(t: Tool) {
   })
 }
 
-export function buildServer(kinds: Kind[] = ['read', 'write']) {
-  return createSdkMcpServer({
-    name: SERVER, version: '0.84.0',
-    tools: Object.values(REGISTRY).filter(t => kinds.includes(t.kind)).map(asMcpTool),
-  })
+/** Registry subset: by kind (82) and, since 85, by explicit name so a specialist gets exactly one tool. */
+function select(kinds: Kind[], names?: string[]): Tool[] {
+  return Object.values(REGISTRY).filter(t => kinds.includes(t.kind) && (!names || names.includes(t.name)))
 }
 
-export function toolNames(kinds: Kind[] = ['read', 'write']): string[] {
-  return Object.values(REGISTRY).filter(t => kinds.includes(t.kind)).map(t => `mcp__${SERVER}__${t.name}`)
+export function buildServer(kinds: Kind[] = ['read', 'write'], names?: string[]) {
+  return createSdkMcpServer({ name: SERVER, version: '0.85.0', tools: select(kinds, names).map(asMcpTool) })
 }
-const short = (n: string) => n.replace(`mcp__${SERVER}__`, '')
+
+export function toolNames(kinds: Kind[] = ['read', 'write'], names?: string[]): string[] {
+  return select(kinds, names).map(t => `mcp__${SERVER}__${t.name}`)
+}
+
+/** Drain one query() stream: assistant text parts + the final result message. Shared by 84 and 85. */
+export async function collect(q: AsyncIterable<SDKMessage>, opts: { verbose?: boolean; label?: string } = {}) {
+  const parts: string[] = []
+  let result: SDKResultMessage | undefined
+  const tag = opts.label ? `[${opts.label}] ` : ''
+  for await (const msg of q) {
+    if (msg.type === 'assistant') {
+      for (const b of msg.message.content) {
+        if (b.type === 'text') parts.push(b.text)
+        else if (b.type === 'tool_use' && opts.verbose) console.error(`  ${tag}→ ${short(b.name)}`)
+      }
+    } else if (msg.type === 'result') result = msg
+  }
+  if (!result) throw new Error('SDK stream ended without a result message')
+  return { parts, result }
+}
+export const short = (n: string) => n.replace(`mcp__${SERVER}__`, '')
 
 export interface SdkResult {
   text: string; sessionId: string; numTurns: number
@@ -110,22 +129,13 @@ export async function runBrief(opts: {
     },
   })
 
-  const parts: string[] = []
-  let result: SDKResultMessage | undefined
+  let parts: string[], result: SDKResultMessage
   try {
-    for await (const msg of q as AsyncIterable<SDKMessage>) {
-      if (msg.type === 'assistant') {
-        for (const b of msg.message.content) {
-          if (b.type === 'text') parts.push(b.text)
-          else if (b.type === 'tool_use' && opts.verbose) console.error(`  → ${short(b.name)}`)
-        }
-      } else if (msg.type === 'result') result = msg
-    }
+    ({ parts, result } = await collect(q as AsyncIterable<SDKMessage>, { verbose: opts.verbose }))
   } catch (e) {
     if (store && runId) store.failRun(runId, String(e))
     throw e
   }
-  if (!result) throw new Error('SDK stream ended without a result message')
   if (result.is_error || result.subtype !== 'success') {
     const msg = `${result.subtype}: ${('errors' in result ? result.errors : []).join('; ')}`
     if (store && runId) store.failRun(runId, msg)

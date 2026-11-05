@@ -75,5 +75,23 @@ def test_no_numeric_constraints_in_strict_schemas():
 
 
 def test_limit_is_clamped_in_handler():
-    env = json.loads(tools.dispatch("read_inbox", {"limit": 999}))
-    assert env["ok"] is True and len(env["data"]) <= 50
+    env = json.loads(tools.dispatch("read_inbox", {"limit": 999, "offset": 0}))
+    assert env["ok"] is True and len(env["data"]["messages"]) <= 50
+
+
+def test_inbox_pages_cover_everything_once(monkeypatch):
+    """Lesson 85: paging must be exact. Every message appears in exactly one page
+    and the last page says next_offset is null."""
+    monkeypatch.setenv("DAYFLOW_INBOX", "large")
+    seen: list[str] = []
+    offset: int | None = 0
+    pages = 0
+    while offset is not None:
+        env = json.loads(tools.dispatch("read_inbox", {"limit": 25, "offset": offset}))
+        assert env["ok"] is True
+        seen += [m["id"] for m in env["data"]["messages"]]
+        offset = env["data"]["next_offset"]
+        pages += 1
+    assert pages == 5 and len(seen) == 120 == len(set(seen)) == env["data"]["total"]
+    # Each page is far below the size the SDK harness persists to disk (~66 KB tripped it).
+    assert len(json.dumps(json.loads(tools.dispatch("read_inbox", {"limit": 25, "offset": 0})))) < 20_000

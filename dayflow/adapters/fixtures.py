@@ -6,6 +6,7 @@ so the agent never knows which one it is talking to.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
@@ -17,9 +18,14 @@ def _load(name: str) -> list[dict]:
 
 
 class FixtureInbox:
-    def list_messages(self, limit: int = 20, unread_only: bool = True) -> list[dict]:
-        msgs = _load("inbox")
-        return sorted(msgs, key=lambda m: m["date"], reverse=True)[:limit]
+    def list_messages(self, limit: int = 20, offset: int = 0) -> dict:
+        """One page, newest first. Shape: {messages, total, next_offset} (lesson 85)."""
+        # Lesson 85: DAYFLOW_INBOX=large swaps in 120 messages (fixtures/gen_inbox_large.py).
+        msgs = _load("inbox_large" if os.environ.get("DAYFLOW_INBOX") == "large" else "inbox")
+        msgs = sorted(msgs, key=lambda m: m["date"], reverse=True)
+        page = msgs[offset:offset + limit]
+        nxt = offset + limit
+        return {"messages": page, "total": len(msgs), "next_offset": nxt if nxt < len(msgs) else None}
 
 
 class FixtureCalendar:

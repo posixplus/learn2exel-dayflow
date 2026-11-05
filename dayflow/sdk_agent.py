@@ -31,10 +31,11 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Iterable
 
 from claude_agent_sdk import (
     AssistantMessage,
+    ResultError,
     ClaudeAgentOptions,
     HookMatcher,
     ResultMessage,
@@ -73,16 +74,23 @@ def _as_mcp_tool(t: Tool):
     return handler
 
 
-def build_server(kinds: tuple[Kind, ...] = ("read", "write")):
+def _select(kinds: tuple[Kind, ...], names: Iterable[str] | None) -> list[Tool]:
+    """Registry subset: by kind (lesson 82) and, since lesson 85, by explicit name
+    so a specialist can be handed exactly one tool."""
+    wanted = set(names) if names is not None else None
+    return [t for t in REGISTRY.values() if t.kind in kinds and (wanted is None or t.name in wanted)]
+
+
+def build_server(kinds: tuple[Kind, ...] = ("read", "write"), names: Iterable[str] | None = None):
     return create_sdk_mcp_server(
         name=SERVER,
-        version="0.84.0",
-        tools=[_as_mcp_tool(t) for t in REGISTRY.values() if t.kind in kinds],
+        version="0.85.0",
+        tools=[_as_mcp_tool(t) for t in _select(kinds, names)],
     )
 
 
-def tool_names(kinds: tuple[Kind, ...] = ("read", "write")) -> list[str]:
-    return [f"mcp__{SERVER}__{t.name}" for t in REGISTRY.values() if t.kind in kinds]
+def tool_names(kinds: tuple[Kind, ...] = ("read", "write"), names: Iterable[str] | None = None) -> list[str]:
+    return [f"mcp__{SERVER}__{t.name}" for t in _select(kinds, names)]
 
 
 def _short(name: str) -> str:
@@ -101,6 +109,31 @@ class SdkResult:
     cache_read_tokens: int = 0
     cost_usd: float | None = None
     run_id: str | None = None
+
+
+async def collect(stream, *, verbose: bool = False, label: str = "") -> tuple[list[str], ResultMessage]:
+    """Drain one query() stream. Returns the assistant text parts and the final
+    ResultMessage. Shared by the single agent (84) and every specialist (85)."""
+    text_parts: list[str] = []
+    result: ResultMessage | None = None
+    tag = f"[{label}] " if label else ""
+    try:
+        async for msg in stream:
+            if isinstance(msg, AssistantMessage):
+                for block in msg.content:
+                    if isinstance(block, TextBlock):
+                        text_parts.append(block.text)
+                    elif isinstance(block, ToolUseBlock) and verbose:
+                        print(f"  {tag}→ {_short(block.name)}")
+            elif isinstance(msg, ResultMessage):
+                result = msg
+    except ResultError as e:
+        # max_turns, max_budget_usd and execution errors arrive as an exception in
+        # this SDK version, not as a ResultMessage with is_error. Normalise.
+        raise RuntimeError(f"{tag}{e}") from e
+    if result is None:
+        raise RuntimeError("SDK stream ended without a ResultMessage")
+    return text_parts, result
 
 
 # ── The run ──────────────────────────────────────────────────────────────────
@@ -154,25 +187,13 @@ async def run_brief(
         hooks={"PostToolUse": [HookMatcher(matcher=f"mcp__{SERVER}__.*", hooks=[record_step])]},
     )
 
-    text_parts: list[str] = []
-    result: ResultMessage | None = None
     try:
-        async for msg in query(prompt=user_msg, options=options):
-            if isinstance(msg, AssistantMessage):
-                for block in msg.content:
-                    if isinstance(block, TextBlock):
-                        text_parts.append(block.text)
-                    elif isinstance(block, ToolUseBlock) and verbose:
-                        print(f"  → {_short(block.name)}")
-            elif isinstance(msg, ResultMessage):
-                result = msg
+        text_parts, result = await collect(query(prompt=user_msg, options=options), verbose=verbose)
     except Exception as e:  # noqa: BLE001
         if store and run_id:
             store.fail_run(run_id, error=f"{type(e).__name__}: {e}")
         raise
 
-    if result is None:
-        raise RuntimeError("SDK stream ended without a ResultMessage")
     if result.is_error or result.subtype != "success":
         msg = f"{result.subtype}: {'; '.join(result.errors or [])}"
         if store and run_id:

@@ -108,7 +108,7 @@ from dayflow.compact import compact, estimate_tokens  # noqa: E402
 
 
 def _exchange(i, ok=True, n=3):
-    a = {"role": "assistant", "content": [{"type": "tool_use", "id": f"tu_{i}", "name": "read_inbox", "input": {"limit": 20}}]}
+    a = {"role": "assistant", "content": [{"type": "tool_use", "id": f"tu_{i}", "name": "read_inbox", "input": {"limit": 20, "offset": 0}}]}
     payload = {"ok": True, "data": [{"id": f"m{k}", "body": "x" * 400} for k in range(n)]} if ok else {"ok": False, "error": {"code": "quota", "message": "", "retryable": True}}
     u = {"role": "user", "content": [{"type": "tool_result", "tool_use_id": f"tu_{i}", "content": json.dumps(payload)}]}
     return a, u

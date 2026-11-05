@@ -12,8 +12,11 @@ export type Event = { id: string; title: string; start: string; end: string; att
 export type Task = { id: string; title: string; due: string; done: boolean }
 
 export const inbox = {
-  listMessages: (limit = 20): Message[] =>
-    load<Message>('inbox').sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit),
+  listMessages: (limit = 20, offset = 0) => {
+    const all = load<Message>(process.env.DAYFLOW_INBOX === 'large' ? 'inbox_large' : 'inbox').sort((a, b) => b.date.localeCompare(a.date))
+    const next = offset + limit
+    return { messages: all.slice(offset, next), total: all.length, next_offset: next < all.length ? next : null }
+  },
 }
 
 export const calendar = {
