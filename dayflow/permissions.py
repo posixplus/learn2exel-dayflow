@@ -65,7 +65,7 @@ class Decision:
 class Policy:
     """How this run treats tools. Frozen: a run's policy does not change under it."""
     writes: WritesMode = "ask"
-    max_writes_per_run: int = 2      # was a sentence in the prompt until this lesson
+    max_writes_per_run: int = 2      # per write tool. Was a sentence in the prompt until lesson 86
 
     def decide(self, tool: Tool, args: dict[str, Any], *, writes_so_far: int) -> Decision:
         if tool.kind == "read":
@@ -74,7 +74,7 @@ class Policy:
         if self.writes == "deny":
             return Decision("deny", "this run is read-only", READ_ONLY)
         if writes_so_far >= self.max_writes_per_run:
-            return Decision("deny", f"this run already proposed {writes_so_far} writes; the limit is {self.max_writes_per_run}", WRITE_LIMIT)
+            return Decision("deny", f"this run already proposed {writes_so_far} {tool.name} calls; the limit is {self.max_writes_per_run}", WRITE_LIMIT)
         if self.writes == "allow":
             return Decision("allow", "writes were pre-approved for this run (--approve auto)")
         return Decision("ask", f"{tool.name} is a write tool")
@@ -163,7 +163,9 @@ class Gate:
     store: Store | None = None
     run_id: str | None = None
     ttl_hours: float = DEFAULT_TTL_HOURS
-    writes: int = 0                  # writes allowed or queued so far in this run
+    # Writes allowed or queued so far in this run, per tool. Lesson 87 added a second
+    # write tool; two drafts should not use up the two tasks.
+    writes: dict[str, int] = field(default_factory=dict)
 
     def check(self, name: str, args: dict[str, Any]) -> Outcome:
         """Decide one call. Does not run the tool: the SDK engine runs it itself
@@ -190,7 +192,7 @@ class Gate:
         tool = REGISTRY.get(name)
         if tool is None or tool.kind == "read":
             return None              # unknown names fall through to dispatch's own error envelope
-        return self.policy.decide(tool, args, writes_so_far=self.writes)
+        return self.policy.decide(tool, args, writes_so_far=self.writes.get(name, 0))
 
     def _request(self, name: str, args: dict[str, Any], decision: Decision) -> Request:
         return Request(name, args, decision.reason, self.run_id)
@@ -201,13 +203,13 @@ class Gate:
             return Outcome(False, _refusal(decision.code, f"Not executed: {decision.reason}. Do not retry."), code=decision.code)
 
         if decision.behavior == "allow":
-            self.writes += 1
+            self.writes[name] = self.writes.get(name, 0) + 1
             self._audit(name, args, "allowed", "policy", decision.reason)
             return Outcome(True)
 
         assert verdict is not None
         if verdict.approved is True:
-            self.writes += 1
+            self.writes[name] = self.writes.get(name, 0) + 1
             self._audit(name, args, "allowed", "human", verdict.reason)
             return Outcome(True)
         if verdict.approved is False:
@@ -215,7 +217,7 @@ class Gate:
             return Outcome(False, _refusal(DENIED, f"Not executed. The user declined: {verdict.reason}. Do not retry; say in the brief that it was declined."), code=DENIED)
 
         # Queued. It counts toward the write limit: a run cannot stack up proposals either.
-        self.writes += 1
+        self.writes[name] = self.writes.get(name, 0) + 1
         approval_id = self._audit(name, args, "pending", None, verdict.reason)
         ref = f" as {approval_id}" if approval_id else ""
         return Outcome(False, _refusal(PENDING, f"Not executed. Queued for the user's approval{ref}. Do not retry. "
@@ -230,7 +232,8 @@ class Gate:
     def _audit(self, tool: str, args: dict[str, Any], status: str, decided_by: str | None, reason: str) -> str | None:
         if self.store is None:
             return None
-        return self.store.record_approval(run_id=self.run_id, tool=tool, args=args, status=status,
+        from dayflow import tools as _tools            # read at call time: use_google() may have run since import
+        return self.store.record_approval(run_id=self.run_id, tool=tool, args=args, status=status, backend=_tools.BACKEND,
                                           decided_by=decided_by, reason=reason, ttl_hours=self.ttl_hours)
 
 
@@ -253,6 +256,15 @@ def approve(store: Store, approval_id: str) -> dict[str, Any]:
     if store.is_expired(row):
         store.decide_approval(approval_id, status="expired", decided_by="policy", reason="older than its TTL")
         raise ApprovalError(f"approval {approval_id} expired at {row['expires_at']}; run the brief again to get a fresh proposal")
+    # Lesson 87, found on the first real run: a draft proposed against Gmail was approved
+    # with MOCK=1, so the real message id was looked up in the fixture inbox. It failed only
+    # because that id happened not to exist there. Approve in the world the proposal came from.
+    from dayflow import tools as _tools
+    proposed_on = row["backend"]
+    if proposed_on and proposed_on != _tools.BACKEND:
+        how = "MOCK=0 dayflow approve" if proposed_on == "google" else "MOCK=1 dayflow approve"
+        raise ApprovalError(f"approval {approval_id} was proposed against {proposed_on}, but this command is running against "
+                            f"{_tools.BACKEND}. Nothing was done. Run: {how} {approval_id}")
     envelope = dispatch(row["tool"], json.loads(row["args"]))
     result = json.loads(envelope)
     if not result["ok"]:

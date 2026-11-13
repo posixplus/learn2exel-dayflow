@@ -18,7 +18,7 @@ export class Policy {
     if (tool.kind === 'read') return { behavior: 'allow', reason: 'read tools do not change anything' }
     // Deny rules first. An allow rule must never be able to skip a limit.
     if (this.writes === 'deny') return { behavior: 'deny', reason: 'this run is read-only', code: READ_ONLY }
-    if (writesSoFar >= this.maxWritesPerRun) return { behavior: 'deny', reason: `this run already proposed ${writesSoFar} writes; the limit is ${this.maxWritesPerRun}`, code: WRITE_LIMIT }
+    if (writesSoFar >= this.maxWritesPerRun) return { behavior: 'deny', reason: `this run already proposed ${writesSoFar} ${tool.name} calls; the limit is ${this.maxWritesPerRun}`, code: WRITE_LIMIT }
     if (this.writes === 'allow') return { behavior: 'allow', reason: 'writes were pre-approved for this run (--approve auto)' }
     return { behavior: 'ask', reason: `${tool.name} is a write tool` }
   }
@@ -67,7 +67,8 @@ export interface Outcome { allowed: boolean; envelope?: string; approvalId?: str
 const refusal = (code: string, message: string) => JSON.stringify({ ok: false, error: { code, message, retryable: false } })
 
 export class Gate {
-  writes = 0
+  /** Writes allowed or queued so far in this run, per tool (lesson 87 added a second write tool). */
+  writes: Record<string, number> = {}
   constructor(public policy = new Policy(), public approver: Approver = new QueueApprover(),
               public store?: Store, public runId?: string | null, public ttlHours = TTL_HOURS) {}
 
@@ -75,19 +76,20 @@ export class Gate {
   async check(name: string, args: Record<string, unknown>): Promise<Outcome> {
     const tool = REGISTRY[name]
     if (!tool || tool.kind === 'read') return { allowed: true }
-    const d = this.policy.decide(tool, this.writes)
+    const d = this.policy.decide(tool, this.writes[name] ?? 0)
+    const count = () => { this.writes[name] = (this.writes[name] ?? 0) + 1 }
     if (d.behavior === 'deny') {
       this.audit(name, args, 'denied', 'policy', d.reason)
       return { allowed: false, envelope: refusal(d.code!, `Not executed: ${d.reason}. Do not retry.`), code: d.code }
     }
-    if (d.behavior === 'allow') { this.writes++; this.audit(name, args, 'allowed', 'policy', d.reason); return { allowed: true } }
+    if (d.behavior === 'allow') { count(); this.audit(name, args, 'allowed', 'policy', d.reason); return { allowed: true } }
     const v = await this.approver.resolve({ tool: name, args, reason: d.reason, runId: this.runId })
-    if (v.approved === true) { this.writes++; this.audit(name, args, 'allowed', 'human', v.reason); return { allowed: true } }
+    if (v.approved === true) { count(); this.audit(name, args, 'allowed', 'human', v.reason); return { allowed: true } }
     if (v.approved === false) {
       this.audit(name, args, 'denied', 'human', v.reason)
       return { allowed: false, code: DENIED, envelope: refusal(DENIED, `Not executed. The user declined: ${v.reason}. Do not retry; say in the brief that it was declined.`) }
     }
-    this.writes++   // a queued proposal counts toward the limit too
+    count()   // a queued proposal counts toward the limit too
     const approvalId = this.audit(name, args, 'pending', null, v.reason)
     return { allowed: false, approvalId, code: PENDING,
       envelope: refusal(PENDING, `Not executed. Queued for the user's approval${approvalId ? ` as ${approvalId}` : ''}. Do not retry. List it in the brief under 'Waiting for your approval'.`) }

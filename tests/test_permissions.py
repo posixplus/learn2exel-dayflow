@@ -244,3 +244,12 @@ def test_gate_for_never_waits_on_a_terminal_that_is_not_there(store):
     assert isinstance(permissions.gate_for("default", store=store, interactive=True).approver, TtyApprover)
     with pytest.raises(ValueError):
         permissions.gate_for("yolo", store=store)
+
+
+def test_the_write_limit_is_per_tool(store):
+    """Lesson 87 added draft_reply. Two drafts must not use up the two tasks."""
+    gate = Gate(Policy(max_writes_per_run=2), QueueApprover(), store)
+    draft = {"message_id": "m1", "body": "Thanks.", "idempotency_key": "d"}
+    codes = [gate.check("draft_reply", draft).code, gate.check("draft_reply", draft).code, gate.check("draft_reply", draft).code,
+             gate.check("create_task", WRITE).code, gate.check("create_task", WRITE).code, gate.check("create_task", WRITE).code]
+    assert codes == [permissions.PENDING] * 2 + [permissions.WRITE_LIMIT] + [permissions.PENDING] * 2 + [permissions.WRITE_LIMIT]

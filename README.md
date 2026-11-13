@@ -40,6 +40,11 @@ dayflow approvals               # what is waiting on you   (--all = the audit tr
 dayflow approve ap_1a2b3c       # run that proposal exactly as recorded
 dayflow deny ap_1a2b3c -m "already handled"
 dayflow brief --approve auto    # the pre-86 behaviour, said out loud
+dayflow auth login              # lesson 87: Google sign-in in your browser (read-only scopes)
+dayflow auth login --drafts     # ...and permission to create drafts
+dayflow auth status             # what is granted, and whether draft_reply is offered
+MOCK=0 dayflow brief            # your real inbox and calendar
+dayflow auth logout             # revoke at Google and delete the local token
 ```
 
 ## Quick start (TypeScript)
@@ -67,7 +72,8 @@ dayflow/
   permissions.py Policy (allow / deny / ask), approvers (terminal, queue) and the Gate both engines call (86)
   tools.py       strict tool registry + result envelope (82)
   prompts.py     system prompts, versioned separately from code
-  adapters/      fixture adapters now; Gmail/Calendar adapters in lesson 87
+  oauth.py       Google OAuth by hand: PKCE, loopback redirect, refresh, revoke, 0600 token file (87)
+  adapters/      fixtures.py (deterministic) and google.py (real Gmail + Calendar, lesson 87); same interface
 fixtures/        deterministic inbox, calendar, tasks (also the eval + red-team base)
                  inbox_large.json: 120 messages from gen_inbox_large.py, selected with DAYFLOW_INBOX=large (85)
 tests/           fake-client tests (no network) + test_live.py (real API, DAYFLOW_LIVE=1)
@@ -84,7 +90,7 @@ secret with identity federation.
 
 ## Mock mode
 
-`MOCK=1` (the default until lesson 87) runs everything against `fixtures/`. Deterministic,
+`MOCK=1` (still the default) runs everything against `fixtures/`. Deterministic,
 free, and the same fixtures become the eval golden set in lesson 89 and the injection
 red-team set in lesson 88.
 
@@ -140,4 +146,41 @@ A refused or queued write returns `{"ok": false, "error": {"code": ...}}` with o
 `--read-only` is still the stronger tool: it removes the write tool from the surface, so the model
 cannot even propose. Use the gate for actions you want sometimes, and the surface for actions you
 never want.
+
+## Real Google (lesson 87)
+
+`MOCK=0` swaps the fixture adapters for Gmail and Calendar. Tools, prompts, the gate and the
+store do not change; `tools.use_google()` is the only switch.
+
+One-time setup, about ten minutes, in [Google Cloud Console](https://console.cloud.google.com/):
+
+1. Create a project. Enable the **Gmail API** and the **Google Calendar API**.
+2. OAuth consent screen: user type **External**, publishing status **Testing**. Add your own
+   Google address under **Test users**.
+3. Credentials: **Create credentials > OAuth client ID > Desktop app**.
+4. Put the two values in `.env`: `GOOGLE_CLIENT_ID=...` and `GOOGLE_CLIENT_SECRET=...`.
+5. `dayflow auth login`, approve in the browser, then `MOCK=0 dayflow brief`.
+
+Things worth knowing before you run it:
+
+- **Scopes.** Login asks for `gmail.readonly` and `calendar.readonly`. `--drafts` adds
+  `gmail.compose`, which Google does not split: it can also send. Dayflow has no send tool.
+- **The surface follows the token.** Without the compose scope, `draft_reply` is removed from the
+  registry, so the model is never offered a tool the token cannot back.
+- **Testing-mode tokens expire in 7 days.** Google expires refresh tokens for apps in Testing.
+  When that happens Dayflow says so and asks you to log in again.
+- **The token file** is `~/.config/dayflow/google_token.json`, mode 600 (`DAYFLOW_TOKEN_PATH` to
+  move it). A file readable by other users is refused.
+- **Approve where you proposed.** Each proposal records its backend. `dayflow approve` under
+  `MOCK=1` refuses a proposal made against Google (and the reverse) and prints the command to run.
+- **Drafts are not sent.** `draft_reply` creates a draft in the original thread. You send it from
+  Gmail. Gmail has no idempotency key for drafts, so the store keeps its own key-to-draft map.
+- **A run reads the newest 30 messages** from the last 3 days, skipping the Promotions and Social
+  tabs, with each body cut at 400 characters. When more matched, the result says so. Override with
+  `DAYFLOW_INBOX_MAX`, `DAYFLOW_INBOX_QUERY`, `DAYFLOW_BODY_CHARS`. The first defaults (200 messages,
+  1,500 characters) were sized against fixtures; on a real inbox one brief passed 400,000 input
+  tokens and the token budget stopped it.
+
+The TypeScript mirror runs `draft_reply` against fixtures only. The OAuth flow and the Google
+adapters are Python-only for now.
 

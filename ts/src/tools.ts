@@ -70,6 +70,23 @@ export const REGISTRY: Record<string, Tool> = {
     },
     handler: a => tasks.createTask(a.title as string, a.due as string | null, a.idempotency_key as string),
   },
+  // Lesson 87: creates a DRAFT, never sends. The TypeScript mirror runs it against fixtures only;
+  // the real Gmail adapter and OAuth flow live in ../../dayflow/ (see README, lesson 87).
+  draft_reply: {
+    name: 'draft_reply', kind: 'write',
+    description: "Save a reply DRAFT to one inbox message, in the user's own mail. It is not sent; the user reviews and sends it. Only for messages listed under 'Needs a reply'. Use the message id exactly as read_inbox returned it, and the same idempotency_key if you retry.",
+    properties: {
+      message_id: { type: 'string', description: 'id of the message being answered, from read_inbox' },
+      body: { type: 'string', description: 'Plain text of the reply. No subject line, no quoted original.' },
+      idempotency_key: { type: 'string', description: "Stable key for this intent, e.g. 'reply-m1-vendor-signoff'" },
+    },
+    handler: a => {
+      if (!(a.body as string).trim()) throw new ToolError('invalid_body', 'body must not be empty')
+      const d = inbox.createDraft(a.message_id as string, a.idempotency_key as string)
+      if (!d) throw new ToolError('unknown_message', `no message with id '${a.message_id}'`)
+      return d
+    },
+  },
 }
 
 export function definitions(kinds: Kind[] = ['read', 'write']): Anthropic.Tool[] {

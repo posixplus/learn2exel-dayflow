@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS approvals (
   decided_at  TEXT,
   expires_at  TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS drafts (
+  idempotency_key TEXT PRIMARY KEY,       -- lesson 87: Gmail has no idempotency key, so we keep our own
+  draft          TEXT NOT NULL,           -- JSON: {draft_id, to, subject}
+  created_at     TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tasks (
   id              TEXT PRIMARY KEY,
   title           TEXT NOT NULL,
@@ -112,6 +117,11 @@ class Store:
         cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(runs)")}
         if "session_id" not in cols:
             self._conn.execute("ALTER TABLE runs ADD COLUMN session_id TEXT")
+        # Lesson 87: which backend a write was proposed against. Rows from before this
+        # column exist can only have come from fixtures or from a database nobody can
+        # vouch for, so they get NULL and approve() treats NULL as "unknown, do not block".
+        if "backend" not in {r["name"] for r in self._conn.execute("PRAGMA table_info(approvals)")}:
+            self._conn.execute("ALTER TABLE approvals ADD COLUMN backend TEXT")
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -196,7 +206,7 @@ class Store:
 
     # ── approvals (lesson 86) ──
     def record_approval(self, *, run_id: str | None, tool: str, args: dict[str, Any], status: str,
-                        decided_by: str | None, reason: str, ttl_hours: float = 24) -> str:
+                        decided_by: str | None, reason: str, ttl_hours: float = 24, backend: str | None = None) -> str:
         """One row per write decision, whoever made it. 'pending' rows are the queue;
         every other status is the audit trail."""
         approval_id = "ap_" + uuid.uuid4().hex[:6]
@@ -204,10 +214,10 @@ class Store:
         stamp = now.isoformat(timespec="seconds")
         with self.tx() as c:
             c.execute(
-                "INSERT INTO approvals (id, run_id, tool, args, status, decided_by, reason, created_at, decided_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO approvals (id, run_id, tool, args, status, decided_by, reason, created_at, decided_at, expires_at, backend) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (approval_id, run_id, tool, json.dumps(args), status, decided_by, reason, stamp,
                  None if status == "pending" else stamp,
-                 (now + timedelta(hours=ttl_hours)).isoformat(timespec="seconds")),
+                 (now + timedelta(hours=ttl_hours)).isoformat(timespec="seconds"), backend),
             )
         return approval_id
 
@@ -230,6 +240,16 @@ class Store:
     @staticmethod
     def is_expired(row: sqlite3.Row, *, now: datetime | None = None) -> bool:
         return (now or datetime.now(timezone.utc)) >= datetime.fromisoformat(row["expires_at"])
+
+    # ── drafts (lesson 87): which idempotency key already produced which Gmail draft ──
+    def get_draft(self, idempotency_key: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT draft FROM drafts WHERE idempotency_key = ?", (idempotency_key,)).fetchone()
+        return json.loads(row["draft"]) if row else None
+
+    def save_draft(self, idempotency_key: str, draft: dict[str, Any]) -> None:
+        with self.tx() as c:
+            c.execute("INSERT OR IGNORE INTO drafts (idempotency_key, draft, created_at) VALUES (?,?,?)",
+                      (idempotency_key, json.dumps(draft), _now()))
 
     # ── tasks (persisted version of lesson 82's write tool) ──
     def seed_tasks(self, tasks: list[dict[str, Any]]) -> None:
