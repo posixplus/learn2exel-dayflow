@@ -54,9 +54,9 @@ class Tool:
         }
 
 
-# One place to swap adapters later (lesson 87).
-inbox = FixtureInbox()
-calendar = FixtureCalendar()
+# One place to swap adapters (lesson 87 does, with use_google()).
+inbox: Any = FixtureInbox()
+calendar: Any = FixtureCalendar()
 # Tasks: in-memory by default (tests), or the SQLite store once use_store() is called.
 tasks: Any = FixtureTasks()
 
@@ -66,6 +66,15 @@ def use_store(store: Any) -> None:
     global tasks
     store.seed_tasks(_load("tasks"))
     tasks = store
+
+def use_google(http: Any, *, drafts: Any = None) -> None:
+    """Lesson 87: point the inbox and calendar tools at the real Google adapters.
+    Nothing else changes: same tool names, same schemas, same envelope."""
+    global inbox, calendar
+    from dayflow.adapters.google import GmailInbox, GoogleCalendar
+    inbox = GmailInbox(http, drafts=drafts)
+    calendar = GoogleCalendar(http)
+
 
 # ── Read tools ───────────────────────────────────────────────────────────────
 READ_INBOX = Tool(
@@ -129,7 +138,27 @@ CREATE_TASK = Tool(
     handler=lambda title, due, idempotency_key: tasks.create_task(title=title, due=due, idempotency_key=idempotency_key),
 )
 
-REGISTRY: dict[str, Tool] = {t.name: t for t in (READ_INBOX, READ_CALENDAR, READ_TASKS, CREATE_TASK)}
+# Lesson 87: the first write that leaves your machine. It creates a DRAFT, never
+# sends. The human reads it in Gmail and presses Send: a second approval, in the
+# product the recipient will actually receive it from.
+DRAFT_REPLY = Tool(
+    name="draft_reply",
+    kind="write",
+    description=(
+        "Save a reply DRAFT to one inbox message, in the user's own mail. It is not sent; the user "
+        "reviews and sends it. Only for messages listed under 'Needs a reply'. Use the message id "
+        "exactly as read_inbox returned it, and the same idempotency_key if you retry."
+    ),
+    properties={
+        "message_id": {"type": "string", "description": "id of the message being answered, from read_inbox"},
+        "body": {"type": "string", "description": "Plain text of the reply. No subject line, no quoted original."},
+        "idempotency_key": {"type": "string", "description": "Stable key for this intent, e.g. 'reply-m1-vendor-signoff'"},
+    },
+    handler=lambda message_id, body, idempotency_key: inbox.create_draft(
+        message_id=message_id, body=body, idempotency_key=idempotency_key),
+)
+
+REGISTRY: dict[str, Tool] = {t.name: t for t in (READ_INBOX, READ_CALENDAR, READ_TASKS, CREATE_TASK, DRAFT_REPLY)}
 
 
 def definitions(kinds: tuple[Kind, ...] = ("read", "write")) -> list[dict[str, Any]]:

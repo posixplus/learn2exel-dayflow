@@ -28,6 +28,28 @@ class FixtureInbox:
         return {"messages": page, "total": len(msgs), "next_offset": nxt if nxt < len(msgs) else None}
 
 
+    def create_draft(self, *, message_id: str, body: str, idempotency_key: str) -> dict:
+        """Lesson 87: the fixture twin of GmailInbox.create_draft. Same checks, same shape."""
+        from dayflow.tools import ToolError  # local import avoids a cycle
+        if not body.strip():
+            raise ToolError("invalid_body", "body must not be empty")
+        if idempotency_key in _DRAFTS:
+            return {**_DRAFTS[idempotency_key], "created": False}
+        original = next((m for m in _load("inbox_large" if os.environ.get("DAYFLOW_INBOX") == "large" else "inbox")
+                         if m["id"] == message_id), None)
+        if original is None:
+            raise ToolError("unknown_message", f"no message with id {message_id!r}")
+        subject = original["subject"]
+        draft = {"draft_id": f"d{len(_DRAFTS) + 1}", "to": original["from"],
+                 "subject": subject if subject.lower().startswith("re:") else f"Re: {subject}"}
+        _DRAFTS[idempotency_key] = draft
+        return {**draft, "created": True}
+
+
+# Fixture drafts live for the process. Real ones live in Gmail; their idempotency map lives in the store.
+_DRAFTS: dict[str, dict] = {}
+
+
 class FixtureCalendar:
     def list_events(self, days: int = 1) -> list[dict]:
         # Fixtures are a static week; `days` is honoured relative to the first event.

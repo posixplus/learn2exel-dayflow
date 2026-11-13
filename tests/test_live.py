@@ -82,9 +82,10 @@ def test_unattended_brief_proposes_but_never_writes(tmp_path):
         r = loop.run(prompts.MORNING_BRIEF, prompts.brief_request(clock.today()), max_steps=6, token_budget=40_000,
                      store=store, gate=permissions.gate_for("queue", store=store))
         assert store.list_tasks() == before
-        proposals = [c for c in r.tool_calls if c["tool"] == "create_task"]
         pending = store.list_approvals(run_id=r.run_id)
-        assert len(pending) == min(len(proposals), 2)             # the rest hit the write limit
+        for name in ("create_task", "draft_reply"):               # the limit is per write tool (lesson 87)
+            proposed = [c for c in r.tool_calls if c["tool"] == name]
+            assert len([p for p in pending if p["tool"] == name]) == min(len(proposed), 2)
         if pending:
             assert "approval" in r.text.lower() and pending[0]["id"] in r.text
     finally:

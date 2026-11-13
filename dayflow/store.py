@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS approvals (
   decided_at  TEXT,
   expires_at  TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS drafts (
+  idempotency_key TEXT PRIMARY KEY,       -- lesson 87: Gmail has no idempotency key, so we keep our own
+  draft          TEXT NOT NULL,           -- JSON: {draft_id, to, subject}
+  created_at     TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tasks (
   id              TEXT PRIMARY KEY,
   title           TEXT NOT NULL,
@@ -230,6 +235,16 @@ class Store:
     @staticmethod
     def is_expired(row: sqlite3.Row, *, now: datetime | None = None) -> bool:
         return (now or datetime.now(timezone.utc)) >= datetime.fromisoformat(row["expires_at"])
+
+    # ── drafts (lesson 87): which idempotency key already produced which Gmail draft ──
+    def get_draft(self, idempotency_key: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT draft FROM drafts WHERE idempotency_key = ?", (idempotency_key,)).fetchone()
+        return json.loads(row["draft"]) if row else None
+
+    def save_draft(self, idempotency_key: str, draft: dict[str, Any]) -> None:
+        with self.tx() as c:
+            c.execute("INSERT OR IGNORE INTO drafts (idempotency_key, draft, created_at) VALUES (?,?,?)",
+                      (idempotency_key, json.dumps(draft), _now()))
 
     # ── tasks (persisted version of lesson 82's write tool) ──
     def seed_tasks(self, tasks: list[dict[str, Any]]) -> None:

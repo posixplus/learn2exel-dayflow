@@ -54,7 +54,7 @@ function select(kinds: Kind[], names?: string[]): Tool[] {
 }
 
 export function buildServer(kinds: Kind[] = ['read', 'write'], names?: string[]) {
-  return createSdkMcpServer({ name: SERVER, version: '0.86.0', tools: select(kinds, names).map(asMcpTool) })
+  return createSdkMcpServer({ name: SERVER, version: '0.87.0', tools: select(kinds, names).map(asMcpTool) })
 }
 
 export function toolNames(kinds: Kind[] = ['read', 'write'], names?: string[]): string[] {

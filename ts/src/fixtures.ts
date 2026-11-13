@@ -17,7 +17,18 @@ export const inbox = {
     const next = offset + limit
     return { messages: all.slice(offset, next), total: all.length, next_offset: next < all.length ? next : null }
   },
+  /** Lesson 87: fixture twin of the Gmail draft. Returns null for an unknown message id. */
+  createDraft: (messageId: string, idempotencyKey: string) => {
+    const known = drafts.get(idempotencyKey)
+    if (known) return { ...known, created: false }
+    const original = load<Message>(process.env.DAYFLOW_INBOX === 'large' ? 'inbox_large' : 'inbox').find(m => m.id === messageId)
+    if (!original) return null
+    const draft = { draft_id: `d${drafts.size + 1}`, to: original.from, subject: /^re:/i.test(original.subject) ? original.subject : `Re: ${original.subject}` }
+    drafts.set(idempotencyKey, draft)
+    return { ...draft, created: true }
+  },
 }
+const drafts = new Map<string, { draft_id: string; to: string; subject: string }>()
 
 export const calendar = {
   listEvents: (days = 1): Event[] => {

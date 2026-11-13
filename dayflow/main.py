@@ -9,9 +9,55 @@ import sys
 import anthropic
 from dotenv import load_dotenv
 
-from dayflow import clock, loop, permissions, prompts
+from dayflow import clock, loop, oauth, permissions, prompts, tools
 from dayflow.tools import definitions, use_store
 from dayflow.store import Store
+
+
+def _use_real_google(store: Store) -> None:
+    """Swap the fixture adapters for Gmail and Calendar. The tool surface follows the
+    token: if the user did not grant the compose scope, draft_reply is not offered at
+    all. A tool the token cannot back should not exist as far as the model is concerned."""
+    from dayflow.adapters.google import bearer_http
+    client = oauth.Client.from_env()
+    token = oauth.valid_token(client)                     # raises if not signed in; refreshes if expired
+    tools.use_google(bearer_http(lambda: oauth.valid_token(client).access_token), drafts=store)
+    if not token.allows(oauth.SCOPE_COMPOSE):
+        tools.REGISTRY.pop("draft_reply", None)
+
+
+def _auth(args: argparse.Namespace) -> int:
+    try:
+        if args.action == "login":
+            scopes = oauth.SCOPES_READ + ((oauth.SCOPE_COMPOSE,) if args.drafts else ())
+            token = oauth.login(oauth.Client.from_env(), scopes=scopes)
+            print("signed in. granted: " + ", ".join(s.rsplit("/", 1)[-1] for s in token.scopes))
+            print(f"token stored at {oauth.DEFAULT_TOKEN_PATH} (mode 600)")
+        elif args.action == "status":
+            token = oauth.load_token()
+            if token is None:
+                print("not signed in")
+                return 1
+            state = "expired, will refresh on next use" if token.expired() else "valid"
+            print(f"signed in. access token {state}. refresh token: {'yes' if token.refresh_token else 'NO'}")
+            print("granted: " + ", ".join(s.rsplit("/", 1)[-1] for s in token.scopes))
+            print("draft_reply: " + ("available" if token.allows(oauth.SCOPE_COMPOSE) else "not offered (run `dayflow auth login --drafts` to add it)"))
+        else:
+            token = oauth.load_token()
+            if token is None:
+                print("not signed in")
+                return 0
+            try:
+                oauth.revoke(token)                       # tell Google first...
+                print("revoked at Google")
+            except oauth.OAuthError as e:
+                print(f"could not revoke at Google ({e}); remove access at https://myaccount.google.com/permissions", file=sys.stderr)
+            oauth.delete_token()                          # ...then forget it locally either way
+            print("local token deleted")
+    except oauth.OAuthError as e:
+        print(f"google: {e}", file=sys.stderr)
+        return 3
+    return 0
 
 
 def _pending_note(store: Store, run_id: str | None) -> None:
@@ -50,14 +96,24 @@ def main(argv: list[str] | None = None) -> int:
     no = sub.add_parser("deny", help="Reject a queued proposal")
     no.add_argument("approval_id")
     no.add_argument("-m", "--reason", default="")
+    au = sub.add_parser("auth", help="Google sign-in for MOCK=0 (lesson 87)")
+    au.add_argument("action", choices=["login", "status", "logout"])
+    au.add_argument("--drafts", action="store_true", help="login: also ask for permission to create drafts (gmail.compose)")
     args = parser.parse_args(argv)
+
+    if args.cmd == "auth":
+        return _auth(args)
 
     store = Store()
     use_store(store)
 
-    if os.environ.get("MOCK", "1") != "1":
-        print("Real adapters arrive in lesson 87. Set MOCK=1 for now.", file=sys.stderr)
-        return 2
+    if os.environ.get("MOCK", "1") != "1" and args.cmd in ("brief", "resume", "approve"):
+        # Lesson 87: real Gmail and Calendar. Same tools; different adapters behind them.
+        try:
+            _use_real_google(store)
+        except oauth.OAuthError as e:
+            print(f"google: {e}", file=sys.stderr)
+            return 3
 
     if args.cmd == "runs":
         rows = store._conn.execute("SELECT id, status, created_at, input_tokens, output_tokens, (SELECT COUNT(*) FROM steps WHERE run_id = runs.id) AS n FROM runs ORDER BY created_at DESC LIMIT 10").fetchall()
