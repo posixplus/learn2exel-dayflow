@@ -175,8 +175,11 @@ Things worth knowing before you run it:
   move it). A file readable by other users is refused.
 - **Drafts are not sent.** `draft_reply` creates a draft in the original thread. You send it from
   Gmail. Gmail has no idempotency key for drafts, so the store keeps its own key-to-draft map.
-- **Email bodies are cut at 1,500 characters** and only the last 3 days of the inbox are listed
-  (`INBOX_QUERY` in `adapters/google.py`).
+- **A run reads the newest 30 messages** from the last 3 days, skipping the Promotions and Social
+  tabs, with each body cut at 400 characters. When more matched, the result says so. Override with
+  `DAYFLOW_INBOX_MAX`, `DAYFLOW_INBOX_QUERY`, `DAYFLOW_BODY_CHARS`. The first defaults (200 messages,
+  1,500 characters) were sized against fixtures; on a real inbox one brief passed 400,000 input
+  tokens and the token budget stopped it.
 
 The TypeScript mirror runs `draft_reply` against fixtures only. The OAuth flow and the Google
 adapters are Python-only for now.
