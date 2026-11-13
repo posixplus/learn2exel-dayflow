@@ -43,7 +43,13 @@ def test_rebuilt_messages_match_what_the_loop_sent(store):
     rebuilt = store.rebuild_messages(r.run_id)
     # The second API call saw exactly: user, assistant(tool_use), user(tool_result)
     sent = client.calls[1]["messages"]
-    assert rebuilt[:3] == sent
+    # Lesson 90: the copy sent to the API carries a cache marker on its last block.
+    # The stored history must not: a marker is a billing hint, not part of the conversation.
+    assert sent[-1]["content"][-1]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in str(rebuilt)
+    stripped = [{**m, "content": [{k: v for k, v in b.items() if k != "cache_control"} for b in m["content"]]}
+                if isinstance(m["content"], list) else m for m in sent]
+    assert rebuilt[:3] == stripped
 
 
 def test_crash_then_resume_spends_only_the_remaining_steps(store):

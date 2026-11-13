@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -64,6 +65,25 @@ def _plain(blocks: Any) -> list[dict[str, Any]]:
         else:  # thinking blocks etc.: keep whatever the SDK can serialise
             out.append(b.model_dump() if hasattr(b, "model_dump") else dict(b))
     return out
+
+
+def _cached_system(system: str) -> list[dict[str, Any]]:
+    """Lesson 90: a cache breakpoint after the system prompt. Tools come before the
+    system prompt in the cached prefix, so this one marker covers both."""
+    return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+
+
+def _cached_tail(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A second breakpoint on the last block of the last message, so the next step
+    reads everything up to here (the inbox it already paid for) from the cache.
+    Returns a copy: the stored history must not carry cache markers."""
+    if not messages or not isinstance(messages[-1]["content"], list) or not messages[-1]["content"]:
+        return messages
+    last = dict(messages[-1])
+    blocks = [dict(b) for b in last["content"]]
+    blocks[-1]["cache_control"] = {"type": "ephemeral"}
+    last["content"] = blocks
+    return messages[:-1] + [last]
 
 
 def _outcome(output: str) -> dict[str, Any]:
@@ -154,18 +174,30 @@ def _drive(
             store.fail_run(run_id, error=msg)
         return LoopError(msg)
 
+    cache = os.environ.get("DAYFLOW_CACHE", "1") == "1"
     for step in range(start_step, max_steps + 1):
+        t0 = time.perf_counter()
         resp = client.messages.create(
             model=model,
             max_tokens=max_tokens,
-            system=system,
+            system=_cached_system(system) if cache else system,
             tools=tools,
-            messages=messages,
+            messages=_cached_tail(messages) if cache else messages,
         )
-        used_in += resp.usage.input_tokens
+        ms = int((time.perf_counter() - t0) * 1000)
+        # Lesson 90: with prompt caching, input_tokens is only the UNCACHED part. The
+        # budget must count every token the model read, or caching would quietly raise it.
+        c_read = int(getattr(resp.usage, "cache_read_input_tokens", 0) or 0)
+        c_write = int(getattr(resp.usage, "cache_creation_input_tokens", 0) or 0)
+        step_in = resp.usage.input_tokens + c_read + c_write
+        used_in += step_in
         used_out += resp.usage.output_tokens
+        if store and run_id:
+            store.record_event(run_id, step=step, kind="model", name=model, ms=ms, input_tokens=resp.usage.input_tokens,
+                               output_tokens=resp.usage.output_tokens, cache_read=c_read, cache_write=c_write,
+                               code=resp.stop_reason)
         if verbose:
-            print(f"[step {step}] stop={resp.stop_reason} in={resp.usage.input_tokens} out={resp.usage.output_tokens}")
+            print(f"[step {step}] stop={resp.stop_reason} in={step_in} (cached {c_read}) out={resp.usage.output_tokens} {ms}ms")
 
         # Guard 2: token budget. Checked after every call, before acting on it.
         if used_in + used_out > token_budget:
@@ -176,7 +208,7 @@ def _drive(
         if resp.stop_reason == "end_turn":
             text = "".join(b["text"] for b in content if b.get("type") == "text")
             if store and run_id:
-                store.append_step(run_id, StepRow(step, "end_turn", content, None, resp.usage.input_tokens, resp.usage.output_tokens))
+                store.append_step(run_id, StepRow(step, "end_turn", content, None, step_in, resp.usage.output_tokens))
                 store.finish_run(run_id, text=text)
             return RunResult(text, step, used_in, used_out, resp.stop_reason, tool_log, run_id)
 
@@ -193,8 +225,13 @@ def _drive(
         for block in content:
             if block.get("type") != "tool_use":
                 continue
+            t1 = time.perf_counter()
             output = gate.call(block["name"], block["input"])     # was dispatch(); the gate calls it if allowed
-            tool_log.append({"step": step, "tool": block["name"], "args": block["input"], **_outcome(output)})
+            outcome = _outcome(output)
+            tool_log.append({"step": step, "tool": block["name"], "args": block["input"], **outcome})
+            if store and run_id:
+                store.record_event(run_id, step=step, kind="tool", name=block["name"],
+                                   ms=int((time.perf_counter() - t1) * 1000), ok=outcome["ok"], code=outcome["code"])
             if verbose:
                 print(f"    -> {block['name']}({block['input']}) {len(output)} chars")
             results.append({"type": "tool_result", "tool_use_id": block["id"], "content": output})
@@ -204,7 +241,7 @@ def _drive(
 
         # Checkpoint: the step is durable before the next API call can spend anything.
         if store and run_id:
-            store.append_step(run_id, StepRow(step, "tool_use", content, results, resp.usage.input_tokens, resp.usage.output_tokens))
+            store.append_step(run_id, StepRow(step, "tool_use", content, results, step_in, resp.usage.output_tokens))
         if crash_after_step is not None and step >= crash_after_step:
             raise SystemExit(f"simulated crash after step {step}")
 

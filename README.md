@@ -233,3 +233,23 @@ dayflow eval -n 5 --model claude-haiku-5-5 --compare baseline.json
 
 Cost on the fixtures: about 13k input / 2k output tokens per trial. Python only; there is no
 TypeScript mirror of the eval harness.
+
+## Observability and cost (lesson 90)
+
+```bash
+dayflow brief            # footer now shows cached tokens and dollars
+dayflow trace [run_id]   # one run as a waterfall: each model call, its tool calls, ms, tokens, cost
+dayflow stats            # recent runs by model: failures, p50/p95, tokens, cached %, $/run
+DAYFLOW_CACHE=0 dayflow brief   # turn prompt caching off to see what it saves
+```
+
+- `events` table: one row per model call and per tool call (wall time, uncached / cache-read /
+  cache-write / output tokens, outcome). Written by the raw loop; SDK and orchestrated runs
+  report their own cost and are not in `trace` yet.
+- `dayflow/observe.py`: the price table, `cost()`, `trace()`, `stats()`. A model with no price
+  prints `n/a`, never `$0.00`.
+- Prompt caching is on by default: one breakpoint after the system prompt (covers the tools too)
+  and one on the last block of the conversation. Cached tokens still count toward `--token-budget`.
+- Measured on the fixtures, Sonnet 5.5: $0.041 per run uncached, $0.032 for a cold cached run,
+  about $0.024 warm. Haiku 5.5: about $0.002.
+

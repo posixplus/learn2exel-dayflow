@@ -1,6 +1,6 @@
 [project]
 name = "dayflow"
-version = "0.89.0"
+version = "0.90.0"
 description = "Dayflow - the personal ops agent built across Learn2Exel Level 10 (Agentic AI Engineer)"
 requires-python = ">=3.11"
 dependencies = [
