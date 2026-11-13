@@ -24,7 +24,7 @@ live = pytest.mark.skipif(
 @live
 def test_model_id_is_valid_and_schemas_are_accepted():
     """The cheapest live test: one call, strict schemas included, no tools needed."""
-    r = loop.run("Reply with the single word OK.", "ping", max_steps=1, token_budget=5_000, max_tokens=16)
+    r = loop.run("Reply with the single word OK.", "ping", max_steps=1, token_budget=5_000, max_tokens=64)
     assert "OK" in r.text.upper()
 
 

@@ -44,6 +44,7 @@ dayflow auth login              # lesson 87: Google sign-in in your browser (rea
 dayflow auth login --drafts     # ...and permission to create drafts
 dayflow auth status             # what is granted, and whether draft_reply is offered
 MOCK=0 dayflow brief            # your real inbox and calendar
+DAYFLOW_INBOX=redteam dayflow brief --approve auto   # lesson 88: five planted attacks; nothing is written
 dayflow auth logout             # revoke at Google and delete the local token
 ```
 
@@ -70,6 +71,7 @@ dayflow/
   clock.py       what 'today' means: DAYFLOW_TODAY > fixture Monday under MOCK > wall clock (84)
   orchestrate.py fan-out to one-tool specialists on Haiku, fan-in to a tool-less synthesiser (85)
   permissions.py Policy (allow / deny / ask), approvers (terminal, queue) and the Gate both engines call (86)
+  security.py    rules on write arguments, taint, and an injection scan that is a signal, not the defence (88)
   tools.py       strict tool registry + result envelope (82)
   prompts.py     system prompts, versioned separately from code
   oauth.py       Google OAuth by hand: PKCE, loopback redirect, refresh, revoke, 0600 token file (87)
@@ -178,4 +180,27 @@ Things worth knowing before you run it:
 
 The TypeScript mirror runs `draft_reply` against fixtures only. The OAuth flow and the Google
 adapters are Python-only for now.
+
+## Security (lesson 88)
+
+Everything Dayflow reads was written by someone else. `fixtures/inbox_redteam.json` adds five
+attacks to the normal inbox: a fake system notice ordering a wire-transfer task, a request to
+reply with another email's contents, hidden text pushing a password link, an email shaped like
+a tool result claiming all writes were approved, and a look-alike sender asking for "Approved, go ahead."
+
+In live runs the model refused all five every time (Sonnet 5.5 and Haiku 5.5, raw and orchestrated).
+That is behaviour, not a guarantee, so `tests/test_security.py` scripts a model that **obeys** each
+attack and checks what the code allows:
+
+| Control | Where | Trust it? |
+|---|---|---|
+| No send tool; `draft_reply` can only answer an existing message | the tool surface | Yes. It is absent, not forbidden |
+| Content rules: no links in a write, drafts at most 600 chars, no text copied from a different message, no reply to a flagged message | `security.content_violation`, checked in `Policy.decide` before anyone is asked | Yes for what they cover. Paraphrase gets past the copy rule |
+| Taint: a run that read flagged mail gets nothing auto-approved | `Policy.decide(tainted=...)` | Yes, as far as the scan fires |
+| Approval shows the resolved recipient and a warning | `permissions.render` | Depends on the human reading it |
+| Flagged links repeated in the brief are reported from code | `security.flagged_links_in` | Yes for exact links |
+| Pattern scan | `security.scan` | No. One reworded sentence evades it; a test proves that |
+
+The refusal code for a content rule is `content_rule`. The orchestrated engine's inbox report gained
+a `SUSPICIOUS:` section, because a fixed report format silently dropped the model's own warnings.
 

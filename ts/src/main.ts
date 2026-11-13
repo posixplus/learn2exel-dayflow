@@ -9,6 +9,7 @@ import { MORNING_BRIEF, briefRequest } from './prompts.js'
 import { Store } from './store.js'
 import { useStore } from './tools.js'
 import { ApprovalError, approve, deny, gateFor } from './permissions.js'
+import { flaggedLinksIn } from './security.js'
 import { taskSeed } from './fixtures.js'
 
 const [cmd = 'brief', ...rest] = process.argv.slice(2)
@@ -27,6 +28,11 @@ if ((process.env.MOCK ?? '1') !== '1') {
 // ── Lesson 86: the approval queue ──
 const approveIdx = rest.indexOf('--approve')
 const approveMode = approveIdx >= 0 ? rest[approveIdx + 1] : undefined
+// Lesson 88: checked in code after the model is done, not by asking the model to be careful.
+const linkNote = (text: string) => {
+  const bad = flaggedLinksIn(text)
+  if (bad.length) console.error(`\nWARNING: the brief repeats ${bad.length} link(s) from mail flagged as a possible injection. Do not open: ${bad.join(' ')}`)
+}
 const pendingNote = (runId?: string | null) => {
   const p = runId ? store.listApprovals('pending', runId) : []
   if (p.length) console.error(`\n${p.length} write(s) waiting for approval: \`npm run approvals\`, then \`npm run approve -- <id>\` or \`npm run deny -- <id>\`  [${p.map(r => r.id).join(' ')}]`)
@@ -39,7 +45,7 @@ if (cmd === 'approvals') {
     const stale = r.status === 'pending' && store.isExpired(r) ? '  EXPIRED' : ''
     console.log(`${r.id}  ${r.status}${r.decided_by ? ` by ${r.decided_by}` : ''}${stale}  ${r.tool}  run ${r.run_id}  ${r.created_at}`)
     for (const [k, v] of Object.entries(JSON.parse(r.args))) console.log(`    ${k}: ${JSON.stringify(v)}`)
-    if (rest.includes('--all') && r.reason) console.log(`    reason: ${r.reason}`)
+    if (r.reason && (rest.includes('--all') || r.status === 'pending')) console.log(`    note: ${r.reason}`)
   }
   process.exit(0)
 }
@@ -87,6 +93,7 @@ if (cmd === 'brief' && engine === 'sdk') {
   const { runBrief } = await import('./sdkAgent.js')
   const r = await runBrief({ store, verbose, kinds: rest.includes('--read-only') ? ['read'] : ['read', 'write'], gate: gateFor(approveMode, store) })
   console.log(r.text)
+  linkNote(r.text)
   pendingNote(r.runId)
   const cost = r.costUsd == null ? '' : ` · $${r.costUsd.toFixed(4)}`
   console.error(`\n[sdk · ${r.numTurns} turns · ${r.toolCalls.length} tool calls · ${r.inputTokens} in (+${r.cacheReadTokens} cached) / ${r.outputTokens} out${cost} · run ${r.runId} · session ${r.sessionId}]`)
@@ -97,6 +104,7 @@ if (cmd === 'brief') {
   try {
     const r = await run(MORNING_BRIEF, briefRequest(today()), { verbose, store, crashAfterStep, gate: gateFor(approveMode, store) })
     console.log(r.text)
+    linkNote(r.text)
     pendingNote(r.runId)
     console.error(`\n[${r.steps} steps · ${r.toolCalls.length} tool calls · ${r.inputTokens} in / ${r.outputTokens} out · run ${r.runId}]`)
   } catch (e) {

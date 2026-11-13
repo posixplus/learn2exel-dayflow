@@ -12,6 +12,11 @@ from pathlib import Path
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 
 
+def _inbox_name() -> str:
+    """DAYFLOW_INBOX=large (lesson 85) or redteam (lesson 88) swaps the inbox fixture."""
+    return {"large": "inbox_large", "redteam": "inbox_redteam"}.get(os.environ.get("DAYFLOW_INBOX", ""), "inbox")
+
+
 def _load(name: str) -> list[dict]:
     with open(FIXTURES / f"{name}.json", encoding="utf-8") as f:
         return json.load(f)
@@ -21,12 +26,16 @@ class FixtureInbox:
     def list_messages(self, limit: int = 20, offset: int = 0) -> dict:
         """One page, newest first. Shape: {messages, total, next_offset} (lesson 85)."""
         # Lesson 85: DAYFLOW_INBOX=large swaps in 120 messages (fixtures/gen_inbox_large.py).
-        msgs = _load("inbox_large" if os.environ.get("DAYFLOW_INBOX") == "large" else "inbox")
+        msgs = _load(_inbox_name())
         msgs = sorted(msgs, key=lambda m: m["date"], reverse=True)
         page = msgs[offset:offset + limit]
         nxt = offset + limit
         return {"messages": page, "total": len(msgs), "next_offset": nxt if nxt < len(msgs) else None}
 
+
+    def sender_of(self, message_id: str) -> str | None:
+        """Lesson 88: who a reply to this message would go to. Shown at approval time."""
+        return next((m["from"] for m in _load(_inbox_name()) if m["id"] == message_id), None)
 
     def create_draft(self, *, message_id: str, body: str, idempotency_key: str) -> dict:
         """Lesson 87: the fixture twin of GmailInbox.create_draft. Same checks, same shape."""
@@ -35,7 +44,7 @@ class FixtureInbox:
             raise ToolError("invalid_body", "body must not be empty")
         if idempotency_key in _DRAFTS:
             return {**_DRAFTS[idempotency_key], "created": False}
-        original = next((m for m in _load("inbox_large" if os.environ.get("DAYFLOW_INBOX") == "large" else "inbox")
+        original = next((m for m in _load(_inbox_name())
                          if m["id"] == message_id), None)
         if original is None:
             raise ToolError("unknown_message", f"no message with id {message_id!r}")

@@ -37,6 +37,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Protocol, TextIO
 
+from dayflow import security
 from dayflow.store import Store
 from dayflow.tools import REGISTRY, Tool, dispatch
 
@@ -49,6 +50,7 @@ PENDING = "pending_approval"
 DENIED = "denied_by_user"
 READ_ONLY = "read_only"
 WRITE_LIMIT = "write_limit"
+CONTENT_RULE = "content_rule"        # lesson 88: the arguments themselves are not allowed
 
 DEFAULT_TTL_HOURS = float(os.environ.get("DAYFLOW_APPROVAL_TTL_HOURS", "24"))
 
@@ -67,16 +69,25 @@ class Policy:
     writes: WritesMode = "ask"
     max_writes_per_run: int = 2      # per write tool. Was a sentence in the prompt until lesson 86
 
-    def decide(self, tool: Tool, args: dict[str, Any], *, writes_so_far: int) -> Decision:
+    def decide(self, tool: Tool, args: dict[str, Any], *, writes_so_far: int, tainted: bool = False) -> Decision:
         if tool.kind == "read":
             return Decision("allow", "read tools do not change anything")
         # Deny rules first. An allow rule must never be able to skip a limit.
         if self.writes == "deny":
             return Decision("deny", "this run is read-only", READ_ONLY)
+        # Lesson 88: rules about the arguments. Checked before anyone is asked, so a
+        # human is never shown a write that could not have been allowed anyway.
+        violation = security.content_violation(tool.name, args)
+        if violation:
+            return Decision("deny", violation, CONTENT_RULE)
         if writes_so_far >= self.max_writes_per_run:
             return Decision("deny", f"this run already proposed {writes_so_far} {tool.name} calls; the limit is {self.max_writes_per_run}", WRITE_LIMIT)
-        if self.writes == "allow":
+        if self.writes == "allow" and not tainted:
             return Decision("allow", "writes were pre-approved for this run (--approve auto)")
+        if tainted:
+            # Lesson 88: this run read a message that looks like an injection. Nothing
+            # it proposes is auto-approved, whatever --approve says.
+            return Decision("ask", f"{tool.name} is a write tool, and this run read flagged mail")
         return Decision("ask", f"{tool.name} is a write tool")
 
 
@@ -87,6 +98,8 @@ class Request:
     args: dict[str, Any]
     reason: str
     run_id: str | None = None
+    preview: dict[str, str] = field(default_factory=dict)        # lesson 88: who it goes to, resolved
+    flagged: dict[str, list[str]] = field(default_factory=dict)  # flagged mail this run has read
 
 
 @dataclass(frozen=True)
@@ -105,7 +118,24 @@ def render(req: Request) -> str:
     lines = [f"Dayflow wants to run {req.tool}  ({req.reason})"]
     for k, v in req.args.items():
         lines.append(f"    {k}: {json.dumps(v, ensure_ascii=False)}")
+    # Lesson 88: a message id tells a person nothing. Show where the write would go.
+    for k, v in req.preview.items():
+        lines.append(f"    -> {k}: {v}")
+    if req.flagged:
+        lines.append(f"  WARNING: this run read {len(req.flagged)} message(s) that look like injection attempts: "
+                     + ", ".join(sorted(req.flagged)) + ". Check that this action is one YOU want.")
     return "\n".join(lines)
+
+
+def _preview(name: str, args: dict[str, Any]) -> dict[str, str]:
+    """Facts about a proposed write that its arguments only point at."""
+    if name == "draft_reply":
+        from dayflow import tools
+        lookup = getattr(tools.inbox, "sender_of", None)
+        sender = lookup(args.get("message_id", "")) if lookup else None
+        if sender:
+            return {"to": sender}
+    return {}
 
 
 class TtyApprover:
@@ -167,6 +197,9 @@ class Gate:
     # write tool; two drafts should not use up the two tasks.
     writes: dict[str, int] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        security.reset()             # a new gate is a new run: forget what the last one read
+
     def check(self, name: str, args: dict[str, Any]) -> Outcome:
         """Decide one call. Does not run the tool: the SDK engine runs it itself
         after a PreToolUse 'allow', the raw loop goes through call()."""
@@ -192,10 +225,11 @@ class Gate:
         tool = REGISTRY.get(name)
         if tool is None or tool.kind == "read":
             return None              # unknown names fall through to dispatch's own error envelope
-        return self.policy.decide(tool, args, writes_so_far=self.writes.get(name, 0))
+        return self.policy.decide(tool, args, writes_so_far=self.writes.get(name, 0), tainted=security.RUN.tainted)
 
     def _request(self, name: str, args: dict[str, Any], decision: Decision) -> Request:
-        return Request(name, args, decision.reason, self.run_id)
+        return Request(name, args, decision.reason, self.run_id, preview=_preview(name, args),
+                       flagged=dict(security.RUN.flagged))
 
     def _settle(self, name: str, args: dict[str, Any], decision: Decision, verdict: Verdict | None) -> Outcome:
         if decision.behavior == "deny":
@@ -218,7 +252,13 @@ class Gate:
 
         # Queued. It counts toward the write limit: a run cannot stack up proposals either.
         self.writes[name] = self.writes.get(name, 0) + 1
-        approval_id = self._audit(name, args, "pending", None, verdict.reason)
+        note = verdict.reason
+        preview = _preview(name, args)
+        if preview:
+            note += "; " + ", ".join(f"{k} {v}" for k, v in preview.items())
+        if security.RUN.flagged:
+            note += f"; run read flagged mail: {', '.join(sorted(security.RUN.flagged))}"
+        approval_id = self._audit(name, args, "pending", None, note)
         ref = f" as {approval_id}" if approval_id else ""
         return Outcome(False, _refusal(PENDING, f"Not executed. Queued for the user's approval{ref}. Do not retry. "
                                                 "List it in the brief under 'Waiting for your approval'."),
