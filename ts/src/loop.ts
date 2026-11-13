@@ -1,6 +1,7 @@
 // The agent loop. Lessons 81-83. See ../../dayflow/loop.py for the annotated version.
 import Anthropic from '@anthropic-ai/sdk'
-import { definitions, dispatch } from './tools.js'
+import { definitions } from './tools.js'
+import { Gate, Policy } from './permissions.js'
 import type { Store } from './store.js'
 
 export class LoopError extends Error {}
@@ -26,6 +27,7 @@ export interface RunOptions {
   store?: Store
   kind?: string
   crashAfterStep?: number
+  gate?: Gate          // lesson 86: who decides whether a write runs
 }
 
 /** SDK blocks -> plain JSON the API accepts back verbatim. */
@@ -66,6 +68,9 @@ async function drive(
   const { maxSteps = 10, tokenBudget = 60_000, maxTokens = 2_048, client = new Anthropic(), verbose = false, tools = definitions(), store, runId } = o
   let usedIn = o.usedIn, usedOut = o.usedOut
   const toolCalls: RunResult['toolCalls'] = []
+  // Lesson 86: no gate passed means the safe default. Writes are queued, never run unasked.
+  const gate = o.gate ?? new Gate(new Policy(), undefined, store)
+  gate.runId ??= runId; gate.store ??= store
   const fail = (msg: string) => { if (store && runId) store.failRun(runId, msg); return new LoopError(msg) }
 
   for (let step = o.startStep; step <= maxSteps; step++) {
@@ -92,7 +97,7 @@ async function drive(
     const results: Anthropic.ToolResultBlockParam[] = []
     for (const block of content) {
       if (block.type !== 'tool_use') continue
-      const output = dispatch(block.name, block.input as Record<string, unknown>)
+      const output = await gate.call(block.name, block.input as Record<string, unknown>)   // was dispatch(); the gate calls it if allowed
       toolCalls.push({ step, tool: block.name, args: block.input })
       if (verbose) console.error(`    -> ${block.name}(${JSON.stringify(block.input)}) ${output.length} chars`)
       results.push({ type: 'tool_result', tool_use_id: block.id, content: output })

@@ -1,6 +1,6 @@
 """Run store. Lesson 83: every run is a row, every step is a row.
 
-Two tables:
+Tables:
   runs   one per run: status, token totals, the final text
   steps  one per loop iteration: the assistant turn (as returned, tool_use
          blocks included) and the tool_results we sent back
@@ -9,6 +9,9 @@ The message history of a run is REBUILT from the steps table. That is the
 whole trick behind resumability: if the process dies after step 4, the rows
 for steps 1 to 4 are already committed, and a resume replays them into
 `messages` and calls the API for step 5.
+
+Lesson 86 adds a third table, approvals: one row per write decision. Pending
+rows are the queue a human works through; the rest are the audit trail.
 
 Tasks (lesson 82's write tool) move here too, so a created task outlives the
 process. SQLite is the right database for a single-user agent on one machine;
@@ -22,7 +25,7 @@ import sqlite3
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -53,6 +56,19 @@ CREATE TABLE IF NOT EXISTS steps (
   output_tokens INTEGER NOT NULL,
   created_at    TEXT NOT NULL,
   PRIMARY KEY (run_id, n)
+);
+CREATE TABLE IF NOT EXISTS approvals (
+  id          TEXT PRIMARY KEY,           -- ap_xxxxxx, short enough to type
+  run_id      TEXT,                       -- the run that proposed it (NULL in tests)
+  tool        TEXT NOT NULL,
+  args        TEXT NOT NULL,              -- JSON, the exact arguments. Approving replays these bytes.
+  status      TEXT NOT NULL,              -- pending | allowed | approved | denied | expired
+  decided_by  TEXT,                       -- policy | human | NULL while pending
+  reason      TEXT,
+  result      TEXT,                       -- JSON envelope, set when a queued proposal is approved and run
+  created_at  TEXT NOT NULL,
+  decided_at  TEXT,
+  expires_at  TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tasks (
   id              TEXT PRIMARY KEY,
@@ -177,6 +193,43 @@ class Store:
             if s.tool_results is not None:
                 messages.append({"role": "user", "content": s.tool_results})
         return messages
+
+    # ── approvals (lesson 86) ──
+    def record_approval(self, *, run_id: str | None, tool: str, args: dict[str, Any], status: str,
+                        decided_by: str | None, reason: str, ttl_hours: float = 24) -> str:
+        """One row per write decision, whoever made it. 'pending' rows are the queue;
+        every other status is the audit trail."""
+        approval_id = "ap_" + uuid.uuid4().hex[:6]
+        now = datetime.now(timezone.utc)
+        stamp = now.isoformat(timespec="seconds")
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO approvals (id, run_id, tool, args, status, decided_by, reason, created_at, decided_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (approval_id, run_id, tool, json.dumps(args), status, decided_by, reason, stamp,
+                 None if status == "pending" else stamp,
+                 (now + timedelta(hours=ttl_hours)).isoformat(timespec="seconds")),
+            )
+        return approval_id
+
+    def get_approval(self, approval_id: str) -> sqlite3.Row | None:
+        return self._conn.execute("SELECT * FROM approvals WHERE id = ?", (approval_id,)).fetchone()
+
+    def list_approvals(self, *, status: str | None = "pending", run_id: str | None = None) -> list[sqlite3.Row]:
+        q, params = "SELECT * FROM approvals WHERE 1=1", []
+        if status:
+            q += " AND status = ?"; params.append(status)
+        if run_id:
+            q += " AND run_id = ?"; params.append(run_id)
+        return self._conn.execute(q + " ORDER BY created_at, rowid", params).fetchall()
+
+    def decide_approval(self, approval_id: str, *, status: str, decided_by: str, reason: str, result: str | None = None) -> None:
+        with self.tx() as c:
+            c.execute("UPDATE approvals SET status=?, decided_by=?, reason=?, result=?, decided_at=? WHERE id=?",
+                      (status, decided_by, reason, result, _now(), approval_id))
+
+    @staticmethod
+    def is_expired(row: sqlite3.Row, *, now: datetime | None = None) -> bool:
+        return (now or datetime.now(timezone.utc)) >= datetime.fromisoformat(row["expires_at"])
 
     # ── tasks (persisted version of lesson 82's write tool) ──
     def seed_tasks(self, tasks: list[dict[str, Any]]) -> None:

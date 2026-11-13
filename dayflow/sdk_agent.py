@@ -6,7 +6,9 @@ that was actually ours: the tool registry, the result envelope, the store.
 
 What the SDK takes over:
   - the request/response loop and stop_reason handling (loop.py)
-  - permission checks before every tool call (lesson 86 builds on this)
+  - permission checks before every tool call. Lesson 86 plugs Dayflow's own
+    Gate into that check with a PreToolUse hook and takes the write tool off
+    the auto-approved list.
   - session persistence and `resume` (it owns the transcript now)
   - compaction when the context fills (compact.py becomes a teaching artifact)
 
@@ -47,6 +49,7 @@ from claude_agent_sdk import (
 )
 
 from dayflow import clock, prompts
+from dayflow.permissions import Gate, Policy
 from dayflow.store import StepRow, Store
 from dayflow.tools import REGISTRY, Kind, Tool, dispatch
 
@@ -84,13 +87,21 @@ def _select(kinds: tuple[Kind, ...], names: Iterable[str] | None) -> list[Tool]:
 def build_server(kinds: tuple[Kind, ...] = ("read", "write"), names: Iterable[str] | None = None):
     return create_sdk_mcp_server(
         name=SERVER,
-        version="0.85.0",
+        version="0.86.0",
         tools=[_as_mcp_tool(t) for t in _select(kinds, names)],
     )
 
 
 def tool_names(kinds: tuple[Kind, ...] = ("read", "write"), names: Iterable[str] | None = None) -> list[str]:
     return [f"mcp__{SERVER}__{t.name}" for t in _select(kinds, names)]
+
+
+def preapproved_tools(kinds: tuple[Kind, ...] = ("read", "write")) -> list[str]:
+    """Lesson 86: what the harness may run without asking anyone. Reads only.
+    A write is never on this list, whatever `kinds` says, so it needs the
+    PreToolUse hook to say allow. If the hook is missing or crashes, the write
+    fails closed."""
+    return tool_names(tuple(k for k in kinds if k == "read"))
 
 
 def _short(name: str) -> str:
@@ -146,12 +157,30 @@ async def run_brief(
     max_budget_usd: float = 0.25,
     model: str | None = None,
     resume: str | None = None,
+    gate: Gate | None = None,
 ) -> SdkResult:
     model = model or os.environ.get("DAYFLOW_MODEL") or "claude-sonnet-5-5"
     user_msg = prompts.brief_request(clock.today())
     run_id = store.create_run(kind="brief-sdk", system=prompts.MORNING_BRIEF, user_msg=user_msg, model=model) if store else None
     tool_calls: list[dict[str, Any]] = []
     step = {"n": 0}
+    # Lesson 86: the same Gate the raw loop uses. Default is the safe one (queue).
+    gate = gate or Gate(Policy(), store=store)
+    gate.run_id, gate.store = gate.run_id or run_id, gate.store or store
+
+    async def ask_gate(hook_input: Any, _tool_use_id: str | None, _ctx: Any) -> dict[str, Any]:
+        """PreToolUse: runs before every Dayflow tool call and returns a decision.
+        'allow' lets the SDK run the tool. 'deny' stops it, and the reason is what
+        the model gets back in place of a result, so the reason is our envelope."""
+        name = _short(hook_input["tool_name"])
+        outcome = await gate.acheck(name, hook_input["tool_input"])
+        if verbose and not outcome.allowed:
+            print(f"  ✋ {name}: {outcome.code}" + (f" ({outcome.approval_id})" if outcome.approval_id else ""))
+        return {"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow" if outcome.allowed else "deny",
+            "permissionDecisionReason": "allowed by the Dayflow gate" if outcome.allowed else outcome.envelope,
+        }}
 
     async def record_step(hook_input: Any, _tool_use_id: str | None, _ctx: Any) -> dict[str, Any]:
         """PostToolUse: one row per tool call, same table lesson 83 wrote.
@@ -178,13 +207,19 @@ async def run_brief(
         strict_mcp_config=True,                       # ignore ~/.claude.json and .mcp.json
         setting_sources=[],                           # ignore the developer's own Claude Code settings
         tools=[],                                     # no Read/Bash/Edit: the registry is the whole surface
-        allowed_tools=tool_names(kinds),              # auto-approve our tools (lesson 86 narrows this)
+        # Lesson 86: only READ tools are pre-approved. A write is not on this list,
+        # so the harness itself refuses it unless the PreToolUse hook says allow.
+        # Two locks: lose the hook and writes fail closed, they do not run.
+        allowed_tools=preapproved_tools(kinds),
         permission_mode="default",
         max_turns=max_turns,
         max_budget_usd=max_budget_usd,
         model=model,
         resume=resume,
-        hooks={"PostToolUse": [HookMatcher(matcher=f"mcp__{SERVER}__.*", hooks=[record_step])]},
+        hooks={
+            "PreToolUse": [HookMatcher(matcher=f"mcp__{SERVER}__.*", hooks=[ask_gate])],
+            "PostToolUse": [HookMatcher(matcher=f"mcp__{SERVER}__.*", hooks=[record_step])],
+        },
     )
 
     try:

@@ -19,7 +19,14 @@ returned next_offset until it is null, so you have seen every message. Then writ
 Tools return {"ok": true, "data": ...} or {"ok": false, "error": {...}}. If ok is
 false, say which source was unavailable in the brief; do not guess at its contents.
 You may call create_task for a concrete action the user has not tracked yet; use a
-stable idempotency_key so a retry does not duplicate it. Never create more than two.
+stable idempotency_key so a retry does not duplicate it.
+
+A write can come back ok:false with one of these codes. None of them is a failure to retry:
+  pending_approval  it was NOT done; it is waiting for the user. Add a final section
+                    "## Waiting for your approval" listing each one with its id.
+  denied_by_user    the user said no. Say so in one line; do not argue or try another way.
+  read_only, write_limit  a rule stopped it. Mention the action as a suggestion instead.
+Never describe a task as created, added or done unless its result was ok:true.
 
 Rules: be concise and never invent details.`
 

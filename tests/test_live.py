@@ -66,3 +66,27 @@ def test_brief_does_not_ask_for_a_reply_to_the_promo():
     reply_items = [ln for ln in _section(r.text, "Needs a reply").splitlines() if ln.lstrip().startswith(("-", "*", "1", "2", "3"))]
     assert reply_items, "expected at least one reply item"
     assert not any("megastore" in ln.lower() or "flash sale" in ln.lower() for ln in reply_items if "skipped" not in ln.lower())
+
+
+@live
+def test_unattended_brief_proposes_but_never_writes(tmp_path):
+    """Lesson 86: with nobody to ask, a full read+write surface must still leave
+    the task list untouched. Anything the model wanted to do is a pending row."""
+    from dayflow import permissions, tools
+    from dayflow.store import Store
+    store = Store(tmp_path / "live.db")
+    previous = tools.tasks
+    tools.use_store(store)
+    try:
+        before = store.list_tasks()
+        r = loop.run(prompts.MORNING_BRIEF, prompts.brief_request(clock.today()), max_steps=6, token_budget=40_000,
+                     store=store, gate=permissions.gate_for("queue", store=store))
+        assert store.list_tasks() == before
+        proposals = [c for c in r.tool_calls if c["tool"] == "create_task"]
+        pending = store.list_approvals(run_id=r.run_id)
+        assert len(pending) == min(len(proposals), 2)             # the rest hit the write limit
+        if pending:
+            assert "approval" in r.text.lower() and pending[0]["id"] in r.text
+    finally:
+        tools.tasks = previous
+        store.close()
