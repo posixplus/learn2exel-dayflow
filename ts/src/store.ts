@@ -15,6 +15,10 @@ export interface RunRow {
   input_tokens: number; output_tokens: number; final_text: string | null; error: string | null
 }
 export interface TaskRow { id: string; title: string; due: string | null; done: boolean }
+export interface ApprovalRow {
+  id: string; run_id: string | null; tool: string; args: string; status: string; decided_by: string | null
+  reason: string | null; result: string | null; created_at: string; decided_at: string | null; expires_at: string
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS runs (
@@ -25,6 +29,9 @@ CREATE TABLE IF NOT EXISTS steps (
   run_id TEXT NOT NULL REFERENCES runs(id), n INTEGER NOT NULL, stop_reason TEXT NOT NULL, assistant TEXT NOT NULL,
   tool_results TEXT, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (run_id, n));
+CREATE TABLE IF NOT EXISTS approvals (
+  id TEXT PRIMARY KEY, run_id TEXT, tool TEXT NOT NULL, args TEXT NOT NULL, status TEXT NOT NULL, decided_by TEXT,
+  reason TEXT, result TEXT, created_at TEXT NOT NULL, decided_at TEXT, expires_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, due TEXT, done INTEGER NOT NULL DEFAULT 0,
   idempotency_key TEXT UNIQUE, created_at TEXT NOT NULL);
@@ -95,6 +102,27 @@ export class Store {
     }
     return m
   }
+
+  // ── approvals (lesson 86): pending rows are the queue, the rest are the audit trail ──
+  recordApproval(a: { runId: string | null; tool: string; args: Record<string, unknown>; status: string; decidedBy: string | null; reason: string; ttlHours?: number }): string {
+    const id = 'ap_' + crypto.randomUUID().replace(/-/g, '').slice(0, 6)
+    const t = now()
+    const expires = new Date(Date.now() + (a.ttlHours ?? 24) * 3_600_000).toISOString().slice(0, 19) + '+00:00'
+    this.tx(() => this.db.prepare('INSERT INTO approvals (id,run_id,tool,args,status,decided_by,reason,created_at,decided_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run(id, a.runId, a.tool, JSON.stringify(a.args), a.status, a.decidedBy, a.reason, t, a.status === 'pending' ? null : t, expires))
+    return id
+  }
+  getApproval(id: string): ApprovalRow | undefined { return this.db.prepare('SELECT * FROM approvals WHERE id = ?').get(id) as ApprovalRow | undefined }
+  listApprovals(status: string | null = 'pending', runId?: string | null): ApprovalRow[] {
+    const where = [status ? 'status = ?' : '', runId ? 'run_id = ?' : ''].filter(Boolean)
+    const params = [status, runId].filter((v): v is string => !!v)
+    return this.db.prepare(`SELECT * FROM approvals ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY created_at, rowid`).all(...params) as unknown as ApprovalRow[]
+  }
+  decideApproval(id: string, a: { status: string; decidedBy: string; reason: string; result?: string }) {
+    this.tx(() => this.db.prepare('UPDATE approvals SET status=?, decided_by=?, reason=?, result=?, decided_at=? WHERE id=?')
+      .run(a.status, a.decidedBy, a.reason, a.result ?? null, now(), id))
+  }
+  isExpired(row: ApprovalRow, at = new Date()): boolean { return at >= new Date(row.expires_at) }
 
   seedTasks(tasks: Array<{ id: string; title: string; due?: string | null; done?: boolean }>) {
     this.tx(() => { for (const t of tasks) this.db.prepare('INSERT OR IGNORE INTO tasks (id,title,due,done,idempotency_key,created_at) VALUES (?,?,?,?,NULL,?)').run(t.id, t.title, t.due ?? null, t.done ? 1 : 0, now()) })

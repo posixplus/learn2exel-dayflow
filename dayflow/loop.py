@@ -14,6 +14,11 @@ Three guards keep this from running forever or burning money:
 Lesson 83: every step is committed to the Store BEFORE its tool results are
 acted on by the next call, so a crash at any point leaves a resumable run.
 `resume(run_id)` rebuilds `messages` from the store and continues.
+
+Lesson 86: tool calls no longer go straight to dispatch(). They go through a
+Gate (permissions.py), which lets reads through and stops writes until a rule
+or a person says yes. The loop does not know which; it gets an envelope back
+either way, and a refused write is just another ok=false result for the model.
 """
 from __future__ import annotations
 
@@ -23,8 +28,9 @@ from typing import Any
 
 import anthropic
 
+from dayflow.permissions import Gate, Policy
 from dayflow.store import Store, StepRow
-from dayflow.tools import definitions, dispatch
+from dayflow.tools import definitions
 
 DEFAULT_MODEL = os.environ.get("DAYFLOW_MODEL", "claude-sonnet-5-5")
 
@@ -73,13 +79,14 @@ def run(
     store: Store | None = None,
     kind: str = "brief",
     crash_after_step: int | None = None,   # test hook: simulate a crash after step N is committed
+    gate: Gate | None = None,              # lesson 86: who decides whether a write runs
 ) -> RunResult:
     """Start a new run. With a store, every step is persisted and the run is resumable."""
     run_id = store.create_run(kind=kind, system=system, user_msg=user, model=model) if store else None
     messages: list[dict[str, Any]] = [{"role": "user", "content": user}]
     return _drive(messages, start_step=1, used_in=0, used_out=0, run_id=run_id, system=system, model=model,
                   max_steps=max_steps, token_budget=token_budget, max_tokens=max_tokens, client=client,
-                  verbose=verbose, tools=tools, store=store, crash_after_step=crash_after_step)
+                  verbose=verbose, tools=tools, store=store, crash_after_step=crash_after_step, gate=gate)
 
 
 def resume(
@@ -92,6 +99,7 @@ def resume(
     max_tokens: int = 2_048,
     verbose: bool = False,
     tools: list[dict[str, Any]] | None = None,
+    gate: Gate | None = None,
 ) -> RunResult:
     """Continue a run from its last committed step. Spends nothing on steps already done."""
     run = store.get_run(run_id)
@@ -114,17 +122,21 @@ def resume(
     return _drive(messages, start_step=len(done) + 1, used_in=run["input_tokens"], used_out=run["output_tokens"],
                   run_id=run_id, system=run["system"], model=run["model"], max_steps=max_steps,
                   token_budget=token_budget, max_tokens=max_tokens, client=client, verbose=verbose, tools=tools,
-                  store=store, crash_after_step=None)
+                  store=store, crash_after_step=None, gate=gate)
 
 
 def _drive(
     messages: list[dict[str, Any]], *, start_step: int, used_in: int, used_out: int, run_id: str | None,
     system: str, model: str, max_steps: int, token_budget: int, max_tokens: int,
     client: anthropic.Anthropic | None, verbose: bool, tools: list[dict[str, Any]] | None,
-    store: Store | None, crash_after_step: int | None,
+    store: Store | None, crash_after_step: int | None, gate: Gate | None = None,
 ) -> RunResult:
     client = client or anthropic.Anthropic()
     tools = definitions() if tools is None else tools
+    # No gate passed means the safe default: writes are queued, never run unasked.
+    # A caller that wants the old behaviour has to say Policy("allow") out loud.
+    gate = gate or Gate(Policy(), store=store)
+    gate.run_id, gate.store = gate.run_id or run_id, gate.store or store
     tool_log: list[dict[str, Any]] = []
 
     def fail(msg: str) -> LoopError:
@@ -171,7 +183,7 @@ def _drive(
         for block in content:
             if block.get("type") != "tool_use":
                 continue
-            output = dispatch(block["name"], block["input"])
+            output = gate.call(block["name"], block["input"])     # was dispatch(); the gate calls it if allowed
             tool_log.append({"step": step, "tool": block["name"], "args": block["input"]})
             if verbose:
                 print(f"    -> {block['name']}({block['input']}) {len(output)} chars")

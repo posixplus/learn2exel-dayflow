@@ -10,12 +10,14 @@ import {
   tool,
   type HookCallback,
   type PostToolUseHookInput,
+  type PreToolUseHookInput,
   type SDKMessage,
   type SDKResultMessage,
 } from '@anthropic-ai/claude-agent-sdk'
 import { z, type ZodTypeAny } from 'zod'
 import { today } from './clock.js'
 import { MORNING_BRIEF, briefRequest } from './prompts.js'
+import { Gate, Policy } from './permissions.js'
 import type { Store } from './store.js'
 import { REGISTRY, dispatch, type Kind, type Tool } from './tools.js'
 
@@ -52,11 +54,17 @@ function select(kinds: Kind[], names?: string[]): Tool[] {
 }
 
 export function buildServer(kinds: Kind[] = ['read', 'write'], names?: string[]) {
-  return createSdkMcpServer({ name: SERVER, version: '0.85.0', tools: select(kinds, names).map(asMcpTool) })
+  return createSdkMcpServer({ name: SERVER, version: '0.86.0', tools: select(kinds, names).map(asMcpTool) })
 }
 
 export function toolNames(kinds: Kind[] = ['read', 'write'], names?: string[]): string[] {
   return select(kinds, names).map(t => `mcp__${SERVER}__${t.name}`)
+}
+
+/** Lesson 86: what the harness may run without asking. Reads only, whatever `kinds` says.
+ *  A write needs the PreToolUse hook to say allow; if the hook is missing or throws, it fails closed. */
+export function preapprovedTools(kinds: Kind[] = ['read', 'write']): string[] {
+  return toolNames(kinds.filter(k => k === 'read'))
 }
 
 /** Drain one query() stream: assistant text parts + the final result message. Shared by 84 and 85. */
@@ -86,6 +94,7 @@ export interface SdkResult {
 
 export async function runBrief(opts: {
   store?: Store; kinds?: Kind[]; verbose?: boolean; maxTurns?: number; maxBudgetUsd?: number; model?: string; resume?: string
+  gate?: Gate
 } = {}): Promise<SdkResult> {
   const kinds = opts.kinds ?? ['read', 'write']
   const model = opts.model ?? process.env.DAYFLOW_MODEL ?? 'claude-sonnet-5-5'
@@ -94,6 +103,24 @@ export async function runBrief(opts: {
   const runId = store ? store.createRun({ kind: 'brief-sdk', system: MORNING_BRIEF, userMsg, model }) : null
   const toolCalls: SdkResult['toolCalls'] = []
   let n = 0
+
+  // Lesson 86: the same Gate the raw loop uses. Default is the safe one (queue).
+  const gate = opts.gate ?? new Gate(new Policy(), undefined, store)
+  gate.runId ??= runId; gate.store ??= store
+
+  // PreToolUse: decide before the call. On deny, the reason is what the model
+  // receives in place of a result, so the reason is our envelope.
+  const askGate: HookCallback = async input => {
+    const h = input as PreToolUseHookInput
+    const name = short(h.tool_name)
+    const o = await gate.check(name, h.tool_input as Record<string, unknown>)
+    if (opts.verbose && !o.allowed) console.error(`  ✋ ${name}: ${o.code}${o.approvalId ? ` (${o.approvalId})` : ''}`)
+    return { hookSpecificOutput: {
+      hookEventName: 'PreToolUse' as const,
+      permissionDecision: o.allowed ? 'allow' as const : 'deny' as const,
+      permissionDecisionReason: o.allowed ? 'allowed by the Dayflow gate' : o.envelope,
+    } }
+  }
 
   // PostToolUse: one audit row per tool call, in lesson 83's steps table.
   const recordStep: HookCallback = async input => {
@@ -119,13 +146,16 @@ export async function runBrief(opts: {
       strictMcpConfig: true,
       settingSources: [],
       tools: [],                       // the registry is the whole surface; no Read/Bash/Edit
-      allowedTools: toolNames(kinds),
+      allowedTools: preapprovedTools(kinds),   // reads only; a write needs the hook's allow (two locks)
       permissionMode: 'default',
       maxTurns: opts.maxTurns ?? 8,
       maxBudgetUsd: opts.maxBudgetUsd ?? 0.25,
       model,
       resume: opts.resume,
-      hooks: { PostToolUse: [{ matcher: `mcp__${SERVER}__.*`, hooks: [recordStep] }] },
+      hooks: {
+        PreToolUse: [{ matcher: `mcp__${SERVER}__.*`, hooks: [askGate] }],
+        PostToolUse: [{ matcher: `mcp__${SERVER}__.*`, hooks: [recordStep] }],
+      },
     },
   })
 
