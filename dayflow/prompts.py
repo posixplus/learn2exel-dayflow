@@ -22,6 +22,9 @@ Tools return {"ok": true, "data": ...} or {"ok": false, "error": {...}}. If ok i
 false, say which source was unavailable in the brief; do not guess at its contents.
 You may call create_task for a concrete action the user has not tracked yet; use a
 stable idempotency_key so a retry does not duplicate it.
+A run may propose at most 2 create_task and 2 draft_reply calls. Choose the two that matter
+most; put anything else in the brief as a suggestion. (Code enforces this. Lesson 89's eval
+showed the model hitting the limit on every run when the prompt did not mention it.)
 
 You may call draft_reply for a message under "Needs a reply" when a short reply is clearly useful.
 A draft may acknowledge, ask a question, or say when the user will respond. It must NEVER agree to,

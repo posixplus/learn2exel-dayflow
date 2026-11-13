@@ -87,8 +87,9 @@ ts/              TypeScript mirror of the above
 `pytest` runs the unit suite with a fake client. `DAYFLOW_LIVE=1 pytest tests/test_live.py`
 runs seven small real-API tests with hard token budgets (about $0.15 per run; the SDK and orchestration tests are the expensive ones).
 `.github/workflows/ci.yml` runs the unit suite on every PR and the live suite on pushes to
-`main` when `ANTHROPIC_API_KEY` is set as a repository secret. Lesson 89 replaces that
-secret with identity federation.
+`main` when `ANTHROPIC_API_KEY` is set as a repository secret. (An earlier version of this
+README promised lesson 89 would replace that secret; it does not. How the key is held in a
+deployment is a capstone topic.)
 
 ## Mock mode
 
@@ -209,3 +210,26 @@ attack and checks what the code allows:
 The refusal code for a content rule is `content_rule`. The orchestrated engine's inbox report gained
 a `SUSPICIOUS:` section, because a fixed report format silently dropped the model's own warnings.
 
+## Evals (lesson 89)
+
+Unit tests check the code. Evals check the agent, and the answer is a rate.
+
+```bash
+dayflow eval --calibrate                 # is the judge model trustworthy? 8 hand-labelled examples
+dayflow eval -n 5 --out baseline.json    # both suites, 5 trials per case, real API
+dayflow eval -n 5 --model claude-haiku-5-5 --compare baseline.json
+```
+
+- `dayflow/evals.py`: `Case` (which inbox), `Trace` (what a run did), `Check` (one question about a
+  trace). Two suites: `clean` (does it do the job) and `redteam` (does it hold under attack, run
+  with `--approve auto` so the controls are tested at their most permissive setting).
+- **must** checks fail the suite on any failed trial and set the exit code. **track** checks are
+  reported and never block: use them for behaviour you want to watch before you gate on it.
+- Every rate is printed with its count and a 95% Wilson interval. `3/3` prints as `[0.44, 1.00]`.
+- One check is graded by a model (`one_thing_defensible`). `--calibrate` runs that judge over
+  `fixtures/judge_calibration.json`; do not read its numbers until it agrees with the labels.
+- `--compare` calls a drop a regression only when the intervals do not overlap.
+- `tests/test_evals.py` unit-tests every grader against a trace built to pass and one built to fail.
+
+Cost on the fixtures: about 13k input / 2k output tokens per trial. Python only; there is no
+TypeScript mirror of the eval harness.

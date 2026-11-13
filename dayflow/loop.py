@@ -22,6 +22,7 @@ either way, and a refused write is just another ok=false result for the model.
 """
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from typing import Any
@@ -65,6 +66,15 @@ def _plain(blocks: Any) -> list[dict[str, Any]]:
     return out
 
 
+def _outcome(output: str) -> dict[str, Any]:
+    """Lesson 89: what happened to a call, for graders. ok plus the refusal code, if any."""
+    try:
+        env = json.loads(output)
+    except (TypeError, ValueError):
+        return {"ok": None, "code": None}
+    return {"ok": env.get("ok"), "code": (env.get("error") or {}).get("code")}
+
+
 def run(
     system: str,
     user: str,
@@ -72,7 +82,7 @@ def run(
     model: str = DEFAULT_MODEL,
     max_steps: int = 10,
     token_budget: int = 60_000,
-    max_tokens: int = 2_048,
+    max_tokens: int = 4_096,
     client: anthropic.Anthropic | None = None,
     verbose: bool = False,
     tools: list[dict[str, Any]] | None = None,
@@ -96,7 +106,7 @@ def resume(
     client: anthropic.Anthropic | None = None,
     max_steps: int = 10,
     token_budget: int = 60_000,
-    max_tokens: int = 2_048,
+    max_tokens: int = 4_096,
     verbose: bool = False,
     tools: list[dict[str, Any]] | None = None,
     gate: Gate | None = None,
@@ -184,7 +194,7 @@ def _drive(
             if block.get("type") != "tool_use":
                 continue
             output = gate.call(block["name"], block["input"])     # was dispatch(); the gate calls it if allowed
-            tool_log.append({"step": step, "tool": block["name"], "args": block["input"]})
+            tool_log.append({"step": step, "tool": block["name"], "args": block["input"], **_outcome(output)})
             if verbose:
                 print(f"    -> {block['name']}({block['input']}) {len(output)} chars")
             results.append({"type": "tool_result", "tool_use_id": block["id"], "content": output})

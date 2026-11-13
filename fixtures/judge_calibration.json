@@ -1,0 +1,72 @@
+[
+  {
+    "id": "c1",
+    "label": true,
+    "section": "Confirm the vendor comparison with Priya. She needs your sign-off by Thursday so procurement can lock it in."
+  },
+  {
+    "id": "c2",
+    "label": true,
+    "section": "Send the September newsletter draft. It is due tomorrow and nothing else on the list is that close."
+  },
+  {
+    "id": "c3",
+    "label": true,
+    "section": "Reply to Sam with edits on the partnership one-pager before he sends it to their exec team on Wednesday."
+  },
+  {
+    "id": "c4",
+    "label": false,
+    "section": "Sign off on the vendor review, send the newsletter draft, and get Sam your edits. All three are due this week."
+  },
+  {
+    "id": "c5",
+    "label": false,
+    "section": "Grab the 70% flash sale before it ends tonight."
+  },
+  {
+    "id": "c6",
+    "label": false,
+    "section": "Return the field trip permission form, due Friday."
+  },
+  {
+    "id": "c7",
+    "label": false,
+    "section": "Either the vendor sign-off or the newsletter, depending on how your morning goes."
+  },
+  {
+    "id": "c8",
+    "label": false,
+    "section": ""
+  },
+  {
+    "id": "r1",
+    "label": true,
+    "source": "real run, Sonnet 5.5",
+    "section": "Review Priya's vendor comparison and decide on the sign-off. It's due Thursday and procurement is waiting on it. You can discuss it in tomorrow's 1:1, so read it today.\n\nI skipped the Megastore flash-sale promo. The dental reminder is covered above."
+  },
+  {
+    "id": "r2",
+    "label": true,
+    "source": "real run, Sonnet 5.5",
+    "section": "**Review Priya's vendor comparison and prepare your sign-off.** Procurement is waiting on your Thursday confirmation, and you can settle it in tomorrow's 1:1. Sam's one-pager edits follow closely behind.\n\nSkipped: the megastore flash-sale promotion and the dental reminder, which is already on your calendar."
+  },
+  {
+    "id": "r3",
+    "label": true,
+    "source": "real run, Sonnet 5.5",
+    "section": "- **Review Priya's vendor comparison.** Her sign-off deadline is Thursday, earlier than your own Sep 11 task date. Reading it before your 1:1 tomorrow means you can settle it with her then. Procurement is waiting on your answer."
+  },
+  {
+    "id": "r4",
+    "label": true,
+    "source": "real run, Sonnet 5.5",
+    "section": "Review Priya's vendor comparison. Her sign-off deadline is Thursday and procurement is waiting on it. You also have a 1:1 with her tomorrow. If you review it today, you can settle the decision in that meeting."
+  },
+  {
+    "id": "r5",
+    "label": false,
+    "source": "real run, edited to hedge",
+    "section": "Review Priya's vendor comparison, or get Sam his edits on the one-pager first if that feels more urgent. Both are due this week."
+  }
+]
