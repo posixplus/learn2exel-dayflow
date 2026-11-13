@@ -87,7 +87,7 @@ def _select(kinds: tuple[Kind, ...], names: Iterable[str] | None) -> list[Tool]:
 def build_server(kinds: tuple[Kind, ...] = ("read", "write"), names: Iterable[str] | None = None):
     return create_sdk_mcp_server(
         name=SERVER,
-        version="0.87.0",
+        version="0.88.0",
         tools=[_as_mcp_tool(t) for t in _select(kinds, names)],
     )
 

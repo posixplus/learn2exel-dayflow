@@ -154,6 +154,14 @@ class GmailInbox:
                            "Tell the user the brief covers the newest mail only.")
         return out
 
+    def sender_of(self, message_id: str) -> str | None:
+        """Lesson 88: who a reply to this message would go to. Shown at approval time."""
+        try:
+            raw = self._http("GET", f"{GMAIL}/messages/{message_id}", {"format": "metadata", "metadataHeaders": ["From"]}, None)
+        except GoogleError:
+            return None
+        return parseaddr(_header(raw.get("payload", {}), "From"))[1] or None
+
     def create_draft(self, *, message_id: str, body: str, idempotency_key: str) -> dict[str, Any]:
         """A reply DRAFT in the original thread. Nothing is sent: the user reads it in
         Gmail and presses Send themselves."""

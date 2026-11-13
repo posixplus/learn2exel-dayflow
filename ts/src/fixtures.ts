@@ -11,9 +11,14 @@ export type Message = { id: string; from: string; subject: string; date: string;
 export type Event = { id: string; title: string; start: string; end: string; attendees: string[] }
 export type Task = { id: string; title: string; due: string; done: boolean }
 
+/** DAYFLOW_INBOX=large (lesson 85) or redteam (lesson 88) swaps the inbox fixture. */
+const inboxName = () => ({ large: 'inbox_large', redteam: 'inbox_redteam' } as Record<string, string>)[process.env.DAYFLOW_INBOX ?? ''] ?? 'inbox'
+
 export const inbox = {
+  /** Lesson 88: who a reply to this message would go to. Shown at approval time. */
+  senderOf: (messageId: string): string | null => load<Message>(inboxName()).find(m => m.id === messageId)?.from ?? null,
   listMessages: (limit = 20, offset = 0) => {
-    const all = load<Message>(process.env.DAYFLOW_INBOX === 'large' ? 'inbox_large' : 'inbox').sort((a, b) => b.date.localeCompare(a.date))
+    const all = load<Message>(inboxName()).sort((a, b) => b.date.localeCompare(a.date))
     const next = offset + limit
     return { messages: all.slice(offset, next), total: all.length, next_offset: next < all.length ? next : null }
   },
@@ -21,7 +26,7 @@ export const inbox = {
   createDraft: (messageId: string, idempotencyKey: string) => {
     const known = drafts.get(idempotencyKey)
     if (known) return { ...known, created: false }
-    const original = load<Message>(process.env.DAYFLOW_INBOX === 'large' ? 'inbox_large' : 'inbox').find(m => m.id === messageId)
+    const original = load<Message>(inboxName()).find(m => m.id === messageId)
     if (!original) return null
     const draft = { draft_id: `d${drafts.size + 1}`, to: original.from, subject: /^re:/i.test(original.subject) ? original.subject : `Re: ${original.subject}` }
     drafts.set(idempotencyKey, draft)

@@ -60,6 +60,16 @@ def _auth(args: argparse.Namespace) -> int:
     return 0
 
 
+def _link_note(text: str) -> None:
+    """Lesson 88: checked in code, after the model is done. A phishing link the model
+    was talked into repeating is caught here, not by asking the model to be careful."""
+    from dayflow import security
+    bad = security.flagged_links_in(text)
+    if bad:
+        print(f"\nWARNING: the brief repeats {len(bad)} link(s) from mail flagged as a possible injection. Do not open: "
+              + " ".join(bad), file=sys.stderr)
+
+
 def _pending_note(store: Store, run_id: str | None) -> None:
     """Tell the human, outside the model's text, what is waiting on them. The brief
     may mention it too; this line does not depend on the model remembering to."""
@@ -133,8 +143,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{row['id']}  {row['status']}{who}{stale}  {row['tool']}{where}  run {row['run_id']}  {row['created_at']}")
             for k, v in json.loads(row["args"]).items():
                 print(f"    {k}: {v!r}")
-            if args.all and row["reason"]:
-                print(f"    reason: {row['reason']}")
+            if row["reason"] and (args.all or row["status"] == "pending"):
+                print(f"    note: {row['reason']}")
         return 0
 
     if args.cmd in ("approve", "deny"):
@@ -203,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"sdk run stopped: {e}", file=sys.stderr)
             return 1
         print(result.text)
+        _link_note(result.text)
         _pending_note(store, result.run_id)
         cost = f" · ${result.cost_usd:.4f}" if result.cost_usd is not None else ""
         print(
@@ -240,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
             print("could not reach api.anthropic.com: check your network", file=sys.stderr)
             return 3
         print(result.text)
+        _link_note(result.text)
         _pending_note(store, result.run_id)
         print(
             f"\n[{result.steps} steps · {len(result.tool_calls)} tool calls · "
