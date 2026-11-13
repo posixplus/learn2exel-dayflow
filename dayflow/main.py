@@ -80,6 +80,45 @@ def _pending_note(store: Store, run_id: str | None) -> None:
               file=sys.stderr)
 
 
+def _eval(args: argparse.Namespace) -> int:
+    """Lesson 89. Costs real tokens: about 13k in / 2k out per trial on the fixtures."""
+    from dayflow import evals
+    try:
+        if args.calibrate:
+            c = evals.calibrate()
+            for r in c["rows"]:
+                votes = " ".join("pass" if v else "fail" for v in r["votes"])
+                print(f"  {'agree   ' if r['agree'] else 'DISAGREE'} {r['id']:<3} label={'pass' if r['label'] else 'fail'}  judge: {votes}{'' if r['stable'] else '   <- disagrees with itself'}")
+            print(f"judge {c['model']}, {c['repeats']} votes each: {c['agree']}/{c['n']} match the hand labels every time, {c['stable']}/{c['n']} stable")
+            return 0 if c["agree"] == c["n"] else 1
+        all_cases = evals.suites(with_judge=not args.no_judge)
+        cases = list(all_cases.values()) if args.suite == "all" else [all_cases[args.suite]]
+        kept: list | None = [] if args.traces else None
+        if args.regrade:
+            with open(args.regrade, encoding="utf-8") as f:
+                rows = [json.loads(line) for line in f if line.strip()]
+            print(evals.render(evals.regrade(rows, all_cases, model=f"saved traces ({args.regrade})")))
+            return 0
+        report = evals.run_suite(
+            cases, n=args.n, keep=kept, model=args.model or loop.DEFAULT_MODEL,
+            on_trial=lambda cid, i, t: print(f"  {cid} trial {i}/{args.n}: " + (t.error or f"{len(t.tool_calls)} tool calls, {t.input_tokens} in / {t.output_tokens} out"), file=sys.stderr))
+    except anthropic.AuthenticationError:
+        print("auth failed: check ANTHROPIC_API_KEY in .env", file=sys.stderr)
+        return 3
+    print(evals.render(report))
+    if args.compare:
+        with open(args.compare, encoding="utf-8") as f:
+            moved = evals.compare(json.load(f), report)
+        print("\nvs " + args.compare + ":\n" + ("\n".join("  " + m for m in moved) if moved else "  no check moved"))
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+    if args.traces:
+        with open(args.traces, "w", encoding="utf-8") as f:
+            f.writelines(json.dumps(t) + "\n" for t in kept or [])
+    return 0 if report["ok"] else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     parser = argparse.ArgumentParser(prog="dayflow")
@@ -109,7 +148,20 @@ def main(argv: list[str] | None = None) -> int:
     au = sub.add_parser("auth", help="Google sign-in for MOCK=0 (lesson 87)")
     au.add_argument("action", choices=["login", "status", "logout"])
     au.add_argument("--drafts", action="store_true", help="login: also ask for permission to create drafts (gmail.compose)")
+    ev = sub.add_parser("eval", help="Run the eval suites against the real model (lesson 89)")
+    ev.add_argument("--suite", choices=["clean", "redteam", "all"], default="all")
+    ev.add_argument("-n", type=int, default=3, help="trials per case (default 3; use 10+ before believing a rate)")
+    ev.add_argument("--model", default=None, help="model under test (default: DAYFLOW_MODEL)")
+    ev.add_argument("--no-judge", action="store_true", help="code graders only; no model-graded check")
+    ev.add_argument("--out", default=None, metavar="FILE", help="write the report as JSON")
+    ev.add_argument("--compare", default=None, metavar="FILE", help="diff against a saved report")
+    ev.add_argument("--traces", default=None, metavar="FILE", help="write every trial (text, tool calls, failed checks) as JSON lines")
+    ev.add_argument("--regrade", default=None, metavar="FILE", help="re-apply the graders to saved traces; runs no agent")
+    ev.add_argument("--calibrate", action="store_true", help="check the judge against hand labels and exit")
     args = parser.parse_args(argv)
+
+    if args.cmd == "eval":
+        return _eval(args)
 
     if args.cmd == "auth":
         return _auth(args)
