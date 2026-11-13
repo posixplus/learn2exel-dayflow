@@ -148,6 +148,8 @@ def main(argv: list[str] | None = None) -> int:
     au = sub.add_parser("auth", help="Google sign-in for MOCK=0 (lesson 87)")
     au.add_argument("action", choices=["login", "status", "logout"])
     au.add_argument("--drafts", action="store_true", help="login: also ask for permission to create drafts (gmail.compose)")
+    mc = sub.add_parser("mcp", help="Serve Dayflow's tools over MCP on stdio (lesson 92)")
+    mc.add_argument("--read-only", action="store_true", help="expose the read tools only")
     tr = sub.add_parser("trace", help="Show one run step by step: time, tokens, cost (lesson 90)")
     tr.add_argument("run_id", nargs="?", default=None, help="default: the latest run")
     st = sub.add_parser("stats", help="Recent runs: failures, latency, tokens, cost (lesson 90)")
@@ -173,13 +175,19 @@ def main(argv: list[str] | None = None) -> int:
     store = Store()
     use_store(store)
 
-    if os.environ.get("MOCK", "1") != "1" and args.cmd in ("brief", "resume", "approve"):
+    if os.environ.get("MOCK", "1") != "1" and args.cmd in ("brief", "resume", "approve", "mcp"):
         # Lesson 87: real Gmail and Calendar. Same tools; different adapters behind them.
         try:
             _use_real_google(store)
         except oauth.OAuthError as e:
             print(f"google: {e}", file=sys.stderr)
             return 3
+
+    if args.cmd == "mcp":
+        import anyio
+        from dayflow import mcp_server
+        anyio.run(lambda: mcp_server.serve_stdio(store, read_only=args.read_only))
+        return 0
 
     if args.cmd in ("trace", "stats"):
         from dayflow import observe
