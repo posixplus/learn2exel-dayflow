@@ -75,13 +75,19 @@ def _observed(page: dict[str, Any]) -> dict[str, Any]:
     return {**page, "messages": security.RUN.observe(page["messages"])}
 
 
+# Which world the tools are pointed at: "fixtures" or "google". Recorded on every write
+# proposal, because a proposal only makes sense in the world it was made in.
+BACKEND = "fixtures"
+
+
 def use_google(http: Any, *, drafts: Any = None) -> None:
     """Lesson 87: point the inbox and calendar tools at the real Google adapters.
     Nothing else changes: same tool names, same schemas, same envelope."""
-    global inbox, calendar
+    global inbox, calendar, BACKEND
     from dayflow.adapters.google import GmailInbox, GoogleCalendar
     inbox = GmailInbox(http, drafts=drafts)
     calendar = GoogleCalendar(http)
+    BACKEND = "google"
 
 
 # ── Read tools ───────────────────────────────────────────────────────────────
