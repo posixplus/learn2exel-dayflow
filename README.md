@@ -296,3 +296,34 @@ claude mcp add dayflow -- dayflow mcp
 - stdout is the protocol. Logging goes to stderr.
 - Python only. Needs `mcp>=2.0`.
 
+## Capstone: ship it, and Day 2
+
+Dayflow on a schedule, on your own machine, with nobody watching.
+
+```bash
+dayflow doctor                      # everything an unattended run needs, checked now
+dayflow run                         # one unattended run: briefs/<date>.md and a notification
+dayflow schedule install --at 07:30 # launchd, daily (macOS). `schedule print --cron` for Linux
+dayflow schedule kick               # run it now THROUGH launchd: same environment as 07:30
+dayflow health                      # failures, cost, stale state, as plain sentences
+dayflow backup                      # also runs before every scheduled brief
+dayflow prune --days 30             # forget old mail content, keep the numbers
+```
+
+- **`dayflow run`** is what the schedule calls. It takes a lock, runs at most once a day, queues
+  every write (nobody is there to approve), resumes a run that died on an API outage, writes the
+  brief to a file atomically, and turns any failure into a notification. Exit codes: 0 written,
+  1 failed, 2 nothing to do.
+- **Secrets.** `pip install keyring`, then `dayflow secret set anthropic-api-key` and
+  `dayflow auth migrate --to keychain`. Nothing secret is ever written into the launchd plist.
+- **Health** rides along with every brief: alerts are appended to the file and counted in the
+  notification. Rules: two failures in 7 days, a run stuck for an hour, cost above
+  `DAYFLOW_COST_ALERT` or twice the weekly median, expired approvals, a Google sign-in older
+  than 6 days.
+- **`docs/RUNBOOK.md`** is the page to open when there is no brief in the morning.
+- `briefs/`, `backups/` and `dayflow.db` contain your mail. They are gitignored and mode 600
+  where Dayflow creates them.
+
+Local-first on purpose. A server version would need Postgres, a real secret store and an
+authenticated MCP endpoint, and would hold your mail somewhere that is not your laptop.
+

@@ -10,3 +10,6 @@ ts/dist/
 dayflow.db
 dayflow.db-*
 dayflow.egg-info/
+briefs/
+backups/
+dayflow.log

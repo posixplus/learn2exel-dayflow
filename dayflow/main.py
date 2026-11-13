@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import json
 import os
 import sys
@@ -12,6 +13,28 @@ from dotenv import load_dotenv
 from dayflow import clock, loop, oauth, permissions, prompts, tools
 from dayflow.tools import definitions, use_store
 from dayflow.store import Store
+
+
+def _migrate_token(to: str) -> int:
+    """Move the Google token between the file (lesson 87) and the keychain (capstone).
+    Order matters: write the new copy, read it back, and only then delete the old one."""
+    src = "file" if to == "keychain" else "keychain"
+    os.environ["DAYFLOW_TOKEN_STORE"] = src
+    token = oauth.load_token()
+    if token is None:
+        print(f"no token in the {src}; nothing to move. Sign in with: DAYFLOW_TOKEN_STORE={to} dayflow auth login", file=sys.stderr)
+        return 1
+    os.environ["DAYFLOW_TOKEN_STORE"] = to
+    oauth.save_token(token)
+    if oauth.load_token() != token:
+        print(f"the copy in the {to} did not read back identically; the {src} copy was left in place", file=sys.stderr)
+        return 3
+    os.environ["DAYFLOW_TOKEN_STORE"] = src
+    oauth.delete_token()
+    os.environ["DAYFLOW_TOKEN_STORE"] = to
+    print(f"Google token moved to {oauth.token_location()}; the {src} copy was deleted.")
+    print(f"Now add this line to .env so every command looks there:\n  DAYFLOW_TOKEN_STORE={to}")
+    return 0
 
 
 def _use_real_google(store: Store) -> None:
@@ -26,13 +49,84 @@ def _use_real_google(store: Store) -> None:
         tools.REGISTRY.pop("draft_reply", None)
 
 
+def _api_key_from_keychain() -> None:
+    """Capstone: if the key is not in the environment or .env, look in the keychain. Silent
+    when the keyring package is absent or the item is not there: .env stays the default."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return
+    from dayflow import vault
+    if not vault.available():
+        return
+    try:
+        key = vault.get(vault.ANTHROPIC_KEY)
+    except vault.VaultError:
+        return
+    if key:
+        os.environ["ANTHROPIC_API_KEY"] = key
+
+
+def _secret(args: argparse.Namespace) -> int:
+    import getpass
+    from dayflow import vault
+    try:
+        if args.action == "set":
+            value = getpass.getpass(f"{args.name} (input hidden): ").strip()     # never argv: that lands in shell history and `ps`
+            if not value:
+                print("nothing entered; nothing stored", file=sys.stderr)
+                return 1
+            vault.put(args.name, value)
+            print(f"{args.name} stored in the system keychain. You can now remove it from .env.")
+        elif args.action == "status":
+            print(f"{args.name}: {'in the keychain' if vault.get(args.name) else 'not in the keychain'}"
+                  f"{'; also set in the environment or .env' if os.environ.get('ANTHROPIC_API_KEY') and not vault.get(args.name) else ''}")
+        else:
+            print(f"{args.name}: {'deleted from the keychain' if vault.delete(args.name) else 'was not in the keychain'}")
+    except vault.VaultError as e:
+        print(f"keychain: {e}", file=sys.stderr)
+        return 3
+    return 0
+
+
+def _schedule(args: argparse.Namespace) -> int:
+    from pathlib import Path
+    from dayflow import schedule
+    workdir = Path.cwd()
+    try:
+        if args.action == "print":
+            print(schedule.cron_line(at=args.at, workdir=workdir, mock=args.mock) if args.cron
+                  else schedule.render(schedule.build_plist(at=args.at, workdir=workdir, mock=args.mock)))
+        elif args.action == "install":
+            path = schedule.install(at=args.at, workdir=workdir, mock=args.mock)
+            print(f"installed: {path}\nruns `dayflow run` daily at {args.at} in {workdir} ({'MOCK=1, fixtures' if args.mock else 'MOCK=0, real Google'})"
+                  f"\nlog: {schedule.log_path()}\ntry it now: dayflow schedule kick")
+        elif args.action == "status":
+            st = schedule.status()
+            if not st["installed"]:
+                print("not installed")
+                return 1
+            print(f"installed: {st['plist']}\ndaily at {st['at']}{' (MOCK=1)' if st.get('mock') else ''}\n"
+                  f"loaded by launchd: {'yes' if st['loaded'] else 'NO: run `dayflow schedule install` again'}\nlog: {st['log']}")
+            return 0 if st["loaded"] else 1
+        elif args.action == "kick":
+            schedule.kick()
+            print(f"started through launchd. Watch: tail -f {schedule.log_path()}")
+        else:
+            print("uninstalled" if schedule.uninstall() else "was not installed")
+    except schedule.ScheduleError as e:
+        print(f"schedule: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def _auth(args: argparse.Namespace) -> int:
     try:
+        if args.action == "migrate":
+            return _migrate_token(args.to)
         if args.action == "login":
             scopes = oauth.SCOPES_READ + ((oauth.SCOPE_COMPOSE,) if args.drafts else ())
             token = oauth.login(oauth.Client.from_env(), scopes=scopes)
             print("signed in. granted: " + ", ".join(s.rsplit("/", 1)[-1] for s in token.scopes))
-            print(f"token stored at {oauth.DEFAULT_TOKEN_PATH} (mode 600)")
+            print(f"token stored at {oauth.token_location()}")
         elif args.action == "status":
             token = oauth.load_token()
             if token is None:
@@ -146,8 +240,26 @@ def main(argv: list[str] | None = None) -> int:
     no.add_argument("approval_id")
     no.add_argument("-m", "--reason", default="")
     au = sub.add_parser("auth", help="Google sign-in for MOCK=0 (lesson 87)")
-    au.add_argument("action", choices=["login", "status", "logout"])
+    au.add_argument("action", choices=["login", "status", "logout", "migrate"])
+    au.add_argument("--to", choices=["keychain", "file"], default="keychain", help="migrate: where the Google token should live")
     au.add_argument("--drafts", action="store_true", help="login: also ask for permission to create drafts (gmail.compose)")
+    rn = sub.add_parser("run", help="One unattended run: writes briefs/<date>.md and notifies (capstone)")
+    rn.add_argument("--force", action="store_true", help="run even if today's brief already exists")
+    dr = sub.add_parser("doctor", help="Check everything an unattended run depends on (capstone)")
+    dr.add_argument("--live", action="store_true", help="also make one small API call and one Google token refresh")
+    sub.add_parser("health", help="Recent failures, cost and stale state, as plain sentences (capstone)")
+    bk = sub.add_parser("backup", help="Copy the database to backups/ (capstone)")
+    bk.add_argument("--keep", type=int, default=7)
+    pr = sub.add_parser("prune", help="Forget the content of old runs; keep the numbers (capstone)")
+    pr.add_argument("--days", type=int, default=30)
+    sc = sub.add_parser("schedule", help="Run Dayflow daily with launchd (capstone)")
+    sc.add_argument("action", choices=["install", "status", "uninstall", "print", "kick"])
+    sc.add_argument("--at", default="07:30", help="HH:MM, 24-hour, local time")
+    sc.add_argument("--mock", action="store_true", help="schedule fixture runs (MOCK=1), for a dry run of the schedule itself")
+    sc.add_argument("--cron", action="store_true", help="print: show a crontab line instead of a launchd plist")
+    se = sub.add_parser("secret", help="Keep the API key in the system keychain (capstone)")
+    se.add_argument("action", choices=["set", "status", "delete"])
+    se.add_argument("name", nargs="?", default="anthropic-api-key", choices=["anthropic-api-key"])
     mc = sub.add_parser("mcp", help="Serve Dayflow's tools over MCP on stdio (lesson 92)")
     mc.add_argument("--read-only", action="store_true", help="expose the read tools only")
     tr = sub.add_parser("trace", help="Show one run step by step: time, tokens, cost (lesson 90)")
@@ -166,22 +278,55 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--calibrate", action="store_true", help="check the judge against hand labels and exit")
     args = parser.parse_args(argv)
 
+    _api_key_from_keychain()
+
     if args.cmd == "eval":
         return _eval(args)
 
     if args.cmd == "auth":
         return _auth(args)
 
+    if args.cmd == "secret":
+        return _secret(args)
+
+    if args.cmd == "schedule":
+        return _schedule(args)
+
     store = Store()
     use_store(store)
 
-    if os.environ.get("MOCK", "1") != "1" and args.cmd in ("brief", "resume", "approve", "mcp"):
+    if os.environ.get("MOCK", "1") != "1" and args.cmd in ("brief", "resume", "approve", "mcp", "run"):
         # Lesson 87: real Gmail and Calendar. Same tools; different adapters behind them.
         try:
             _use_real_google(store)
         except oauth.OAuthError as e:
             print(f"google: {e}", file=sys.stderr)
+            if args.cmd == "run":                     # nobody is reading stderr at 07:30
+                from dayflow import ship
+                ship.notify("Dayflow failed", f"Google: {str(e)[:160]}")
             return 3
+
+    if args.cmd in ("run", "doctor", "health", "backup", "prune"):
+        from dayflow import ship
+        if args.cmd == "run":
+            out = ship.run_scheduled(store, force=args.force)
+            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{stamp} dayflow run: {('ok', 'FAILED', 'skipped')[out.code]}: {out.message}")
+            return out.code
+        if args.cmd == "doctor":
+            report = ship.doctor(store, live=args.live)
+            print(report.render())
+            return 0 if report.ok else 1
+        if args.cmd == "health":
+            alerts = ship.health(store)
+            print("\n".join(f"- {a}" for a in alerts) if alerts else "nothing to report")
+            return 1 if alerts else 0
+        if args.cmd == "backup":
+            print(f"backed up to {ship.backup(store, keep=args.keep)}")
+            return 0
+        done = ship.prune(store, days=args.days)
+        print(f"pruned content of {done['runs']} run(s) older than {args.days} days: {done['steps']} step(s), {done['approvals']} decided approval(s). Numbers kept.")
+        return 0
 
     if args.cmd == "mcp":
         import anyio

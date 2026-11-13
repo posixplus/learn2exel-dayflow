@@ -70,6 +70,7 @@ class Token:
     refresh_token: str | None
     expires_at: float                 # unix seconds
     scopes: list[str] = field(default_factory=list)
+    obtained_at: float = 0.0          # capstone: when the user last consented. 0 for tokens saved before this field existed.
 
     def expired(self, *, now: float | None = None, skew: float = 60) -> bool:
         """True a minute early, so a token cannot die between the check and the call."""
@@ -140,6 +141,8 @@ def _token_from(payload: dict[str, Any], *, previous: Token | None = None, now: 
         refresh_token=payload.get("refresh_token") or (previous.refresh_token if previous else None),
         expires_at=(now if now is not None else time.time()) + float(payload.get("expires_in", 3600)),
         scopes=payload["scope"].split() if payload.get("scope") else (previous.scopes if previous else []),
+        # A refresh is not a new consent: Google's 7-day clock for apps in Testing keeps running.
+        obtained_at=previous.obtained_at if previous else (now if now is not None else time.time()),
     )
 
 
@@ -178,9 +181,32 @@ def revoke(token: Token, *, post: Poster = _post_form) -> None:
     post(REVOKE_URL, {"token": token.refresh_token or token.access_token})
 
 
-# ── Token file ───────────────────────────────────────────────────────────────
+# ── Token storage ────────────────────────────────────────────────────────────
+def token_store() -> str:
+    """'file' (lesson 87, the default) or 'keychain' (capstone). Read at call time so
+    .env and tests can change it."""
+    return os.environ.get("DAYFLOW_TOKEN_STORE", "file").lower()
+
+
+def _in_keychain(path: Path) -> bool:
+    # Only the default location moves to the keychain. An explicit path is always a file,
+    # which is what every test and DAYFLOW_TOKEN_PATH user expects.
+    return token_store() == "keychain" and path == DEFAULT_TOKEN_PATH
+
+
+def token_location(path: Path = DEFAULT_TOKEN_PATH) -> str:
+    return "the system keychain (service dayflow, item google-token)" if _in_keychain(path) else f"{path} (mode 600)"
+
+
 def save_token(token: Token, path: Path = DEFAULT_TOKEN_PATH) -> None:
     """Owner read/write only, set BEFORE the secret is written into the file."""
+    if _in_keychain(path):
+        from dayflow import vault
+        try:
+            vault.put(vault.GOOGLE_TOKEN, json.dumps(asdict(token)))
+        except vault.VaultError as e:
+            raise OAuthError(str(e)) from e
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -189,6 +215,13 @@ def save_token(token: Token, path: Path = DEFAULT_TOKEN_PATH) -> None:
 
 
 def load_token(path: Path = DEFAULT_TOKEN_PATH) -> Token | None:
+    if _in_keychain(path):
+        from dayflow import vault
+        try:
+            raw = vault.get(vault.GOOGLE_TOKEN)
+        except vault.VaultError as e:
+            raise OAuthError(str(e)) from e
+        return Token(**json.loads(raw)) if raw else None
     if not path.exists():
         return None
     mode = stat.S_IMODE(path.stat().st_mode)
@@ -198,6 +231,12 @@ def load_token(path: Path = DEFAULT_TOKEN_PATH) -> Token | None:
 
 
 def delete_token(path: Path = DEFAULT_TOKEN_PATH) -> bool:
+    if _in_keychain(path):
+        from dayflow import vault
+        try:
+            return vault.delete(vault.GOOGLE_TOKEN)
+        except vault.VaultError as e:
+            raise OAuthError(str(e)) from e
     if path.exists():
         path.unlink()
         return True

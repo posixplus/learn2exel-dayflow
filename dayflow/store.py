@@ -15,7 +15,7 @@ rows are the queue a human works through; the rest are the audit trail.
 
 Tasks (lesson 82's write tool) move here too, so a created task outlives the
 process. SQLite is the right database for a single-user agent on one machine;
-lesson 93 swaps it for Postgres when Dayflow runs on a server.
+the capstone keeps it: Dayflow ships local-first, and a server version would need Postgres.
 """
 from __future__ import annotations
 

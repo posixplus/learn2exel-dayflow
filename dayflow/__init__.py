@@ -2,4 +2,4 @@
 
 Lesson 83 state: + SQLite run store, per-step checkpoints, resume, persistent tasks.
 """
-__version__ = "0.92.0"
+__version__ = "1.0.0"
