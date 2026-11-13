@@ -199,6 +199,33 @@ def test_long_bodies_are_cut_and_say_so():
     assert len(body) < google.MAX_BODY_CHARS + 60 and "truncated, 5000 chars total" in body
 
 
+def test_a_big_inbox_is_capped_and_the_result_says_so(monkeypatch):
+    """The first real run read ~200 messages and blew a 400,000-token budget."""
+    monkeypatch.setattr(google, "MAX_LISTED", 4)
+    fake = FakeGoogle(9)
+    box = google.GmailInbox(fake)
+    out = box.list_messages(limit=50, offset=0)
+    assert out["total"] == 4 and len(out["messages"]) == 4 and out["next_offset"] is None
+    assert "newest 4" in out["note"] and "not read" in out["note"]
+    assert sum(1 for c in fake.calls if "/messages/" in c[1]) == 4          # bodies beyond the cap are never fetched
+
+
+def test_a_small_inbox_carries_no_note():
+    assert "note" not in google.GmailInbox(FakeGoogle(3)).list_messages(limit=10, offset=0)
+
+
+def test_default_query_skips_promotions_and_social_and_caps_are_small():
+    assert "-category:promotions" in google.INBOX_QUERY and "-category:social" in google.INBOX_QUERY
+    assert google.MAX_LISTED <= 50 and google.MAX_BODY_CHARS <= 600
+    # worst case the model can be handed in one run, in characters: well under the 60k-token budget
+    assert google.MAX_LISTED * (google.MAX_BODY_CHARS + 200) < 40_000
+
+
+def test_whitespace_in_bodies_is_collapsed_before_the_cut():
+    out = google.GmailInbox(FakeGoogle(1, body="Hi\n\n\n   there,\r\n\tsee   you")).list_messages(limit=1)
+    assert out["messages"][0]["body"] == "Hi there, see you"
+
+
 def test_html_only_mail_falls_back_to_the_snippet():
     out = google.GmailInbox(FakeGoogle(1, html_only=True)).list_messages(limit=1)
     assert out["messages"][0]["body"] == "snippet text"
