@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     st = sub.add_parser("stats", help="Recent runs: failures, latency, tokens, cost (lesson 90)")
     st.add_argument("--last", type=int, default=50)
     ev = sub.add_parser("eval", help="Run the eval suites against the real model (lesson 89)")
-    ev.add_argument("--suite", choices=["clean", "redteam", "all"], default="all")
+    ev.add_argument("--suite", choices=["clean", "redteam", "degraded", "all"], default="all")
     ev.add_argument("-n", type=int, default=3, help="trials per case (default 3; use 10+ before believing a rate)")
     ev.add_argument("--model", default=None, help="model under test (default: DAYFLOW_MODEL)")
     ev.add_argument("--no-judge", action="store_true", help="code graders only; no model-graded check")

@@ -63,7 +63,8 @@ def test_tool_error_becomes_envelope_through_dispatch(monkeypatch):
         raise tools.ToolError("quota", "calendar quota exceeded", retryable=True)
     monkeypatch.setattr(tools.REGISTRY["read_calendar"], "handler", bad)
     env = json.loads(tools.dispatch("read_calendar", {"range": "today"}))
-    assert env == {"ok": False, "error": {"code": "quota", "message": "calendar quota exceeded", "retryable": True}}
+    # Lesson 91: a retryable failure of a READ is tried three times before the model hears of it.
+    assert env == {"ok": False, "error": {"code": "quota", "message": "calendar quota exceeded", "retryable": True}, "attempts": 3}
 
 
 def test_no_numeric_constraints_in_strict_schemas():

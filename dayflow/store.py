@@ -132,6 +132,8 @@ class Store:
         cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(runs)")}
         if "session_id" not in cols:
             self._conn.execute("ALTER TABLE runs ADD COLUMN session_id TEXT")
+        if "attempts" not in {r["name"] for r in self._conn.execute("PRAGMA table_info(events)")}:
+            self._conn.execute("ALTER TABLE events ADD COLUMN attempts INTEGER NOT NULL DEFAULT 1")   # lesson 91
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -182,12 +184,12 @@ class Store:
     # ── events (lesson 90) ──
     def record_event(self, run_id: str, *, step: int, kind: str, name: str, ms: int, input_tokens: int = 0,
                      output_tokens: int = 0, cache_read: int = 0, cache_write: int = 0,
-                     ok: bool | None = None, code: str | None = None) -> None:
+                     ok: bool | None = None, code: str | None = None, attempts: int = 1) -> None:
         self._conn.execute(
-            "INSERT INTO events (run_id, step, kind, name, ms, input_tokens, output_tokens, cache_read, cache_write, ok, code, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO events (run_id, step, kind, name, ms, input_tokens, output_tokens, cache_read, cache_write, ok, code, attempts, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (run_id, step, kind, name, ms, input_tokens, output_tokens, cache_read, cache_write,
-             None if ok is None else int(ok), code, _now()))
+             None if ok is None else int(ok), code, attempts, _now()))
 
     def events(self, run_id: str) -> list[sqlite3.Row]:
         return self._conn.execute("SELECT rowid, * FROM events WHERE run_id = ? ORDER BY rowid", (run_id,)).fetchall()

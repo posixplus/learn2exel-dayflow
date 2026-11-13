@@ -80,6 +80,8 @@ def trace(store: Store, run_id: str) -> str:
                          f"{e['output_tokens']:>6}{_money(c):>10}  {e['code']}")
         else:
             outcome = "ok" if e["ok"] else (e["code"] or "error")
+            if e["attempts"] > 1:
+                outcome += f" (after {e['attempts']} attempts)"
             lines.append(f"{'':<5}{'  -> ' + e['name']:<34}{e['ms']:>7}{'':>7}{'':>8}{'':>7}{'':>6}{'':>10}  {outcome}")
     t = run_cost(store, run_id)
     tool_ms = sum(e["ms"] for e in events if e["kind"] == "tool")
