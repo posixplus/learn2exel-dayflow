@@ -195,6 +195,16 @@ def test_cost_above_the_limit_and_cost_above_twice_the_median(store):
     assert "above the $0.15 alert" in ship.health(store, now=NOW)[0]
 
 
+def test_runs_with_no_recorded_cost_do_not_drag_the_median_to_zero(store):
+    """From the first real health report: 'more than twice the 7-day median $0.0000'."""
+    for d in (5, 4, 3, 2):
+        rid = store.create_run(kind="brief", system="s", user_msg="u", model=loop.DEFAULT_MODEL)      # no events: pre-lesson-90
+        when = (NOW - timedelta(days=d)).isoformat(timespec="seconds")
+        store._conn.execute("UPDATE runs SET status='done', created_at=?, updated_at=? WHERE id=?", (when, when, rid))
+    _run_row(store, days_ago=0, in_tok=5_000, out_tok=100)             # an ordinary, cheap run
+    assert ship.health(store, now=NOW) == []
+
+
 def test_an_unpriced_model_raises_no_cost_alert_and_does_not_crash(store):
     _run_row(store, model="some-new-model", in_tok=10**7)
     assert ship.health(store, now=NOW) == []
@@ -245,8 +255,8 @@ def test_prune_forgets_old_content_and_keeps_the_numbers(store):
 # ── doctor ───────────────────────────────────────────────────────────────────
 
 NOT_INSTALLED = lambda: {"installed": False, "loaded": False, "at": None, "plist": "p", "log": "l"}      # noqa: E731
-LOADED = lambda: {"installed": True, "loaded": True, "at": "07:30", "plist": "p", "log": "l"}            # noqa: E731
-ORPHAN = lambda: {"installed": True, "loaded": False, "at": "07:30", "plist": "p", "log": "l"}           # noqa: E731
+LOADED = lambda: {"installed": True, "loaded": True, "at": "07:30", "plist": "p", "log": "l", "mock": True}            # noqa: E731
+ORPHAN = lambda: {"installed": True, "loaded": False, "at": "07:30", "plist": "p", "log": "l", "mock": True}           # noqa: E731
 
 
 def _levels(report):
@@ -281,6 +291,18 @@ def test_doctor_in_real_mode_needs_a_google_sign_in(store, tmp_path, monkeypatch
     oauth.save_token(oauth.Token("a", "r", 0, [oauth.SCOPES_READ[0]], obtained_at=1.0), path)
     r = ship.doctor(store, schedule_status=LOADED)
     assert _levels(r)["google token"] == "ok" and _levels(r)["token storage"] == "warn"
+
+
+def test_doctor_checks_google_when_the_schedule_runs_real_even_from_a_mock_shell(store, tmp_path, monkeypatch):
+    """From the first real doctor run: the shell had MOCK=1, launchd had MOCK=0, and Google was never looked at."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setenv("MOCK", "1")
+    monkeypatch.setattr(oauth.load_token, "__defaults__", (tmp_path / "none.json",))
+    real_schedule = lambda: {"installed": True, "loaded": True, "at": "07:30", "plist": "p", "log": "l", "mock": False}   # noqa: E731
+    r = ship.doctor(store, schedule_status=real_schedule)
+    assert _levels(r)["google token"] == "FAIL" and "the schedule runs MOCK=0" in r.render() and not r.ok
+    mock_schedule = lambda: {**real_schedule(), "mock": True}           # noqa: E731
+    assert "google token" not in _levels(ship.doctor(store, schedule_status=mock_schedule))
 
 
 def test_doctor_live_makes_one_small_call_and_reports_a_failure(store, monkeypatch):

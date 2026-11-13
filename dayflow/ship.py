@@ -180,7 +180,10 @@ def health(store: Store, *, now: datetime | None = None, cost_alert: float | Non
     if runs and not done and older:
         alerts.append("no brief has succeeded in 7 days")
 
-    costs = [c for c in (observe.run_cost(store, r["id"])["usd"] for r in done) if c is not None]
+    # Only runs that recorded model calls have a cost. A run from before lesson 90 has no events;
+    # counting it as $0.00 made the first real health report say "twice the median $0.0000".
+    spent = [observe.run_cost(store, r["id"]) for r in done]
+    costs = [t["usd"] for t in spent if t["calls"] and t["usd"] is not None]
     if costs:
         last, earlier = costs[-1], costs[:-1]
         if last > cost_alert:
@@ -312,8 +315,15 @@ def doctor(store: Store, *, live: bool = False, client: Any = None, schedule_sta
         except Exception as e:  # noqa: BLE001
             r.add("FAIL", "api call", f"{type(e).__name__}: {str(e)[:120]}", "check the key, billing and your network")
 
-    r.add("ok", "mode", "MOCK=1: fixtures, no Google access" if mock else "MOCK=0: real Gmail and Calendar")
-    if not mock:
+    # Check what the SCHEDULE will run, not only what this shell would. The first real doctor
+    # run said "MOCK=1: fixtures" and skipped Google entirely, while launchd was set to MOCK=0.
+    st = (schedule_status or schedule.status)()
+    scheduled_real = st["installed"] and not st.get("mock", False)
+    if mock and scheduled_real:
+        r.add("ok", "mode", "this shell is MOCK=1 (fixtures); the schedule runs MOCK=0 (real Google), so Google is checked too")
+    else:
+        r.add("ok", "mode", "MOCK=1: fixtures, no Google access" if mock else "MOCK=0: real Gmail and Calendar")
+    if not mock or scheduled_real:
         store_kind = oauth.token_store()
         try:
             token = oauth.load_token()
@@ -356,7 +366,6 @@ def doctor(store: Store, *, live: bool = False, client: Any = None, schedule_sta
     free = shutil.disk_usage(Path.cwd()).free / 1e9
     r.add("ok" if free > 1 else "warn", "disk", f"{free:.0f} GB free", "free some space; SQLite fails badly on a full disk")
 
-    st = (schedule_status or schedule.status)()
     if st["installed"] and st["loaded"]:
         r.add("ok", "schedule", f"daily at {st['at']}{' (MOCK=1)' if st.get('mock') else ''}; log {st['log']}")
     elif st["installed"]:
