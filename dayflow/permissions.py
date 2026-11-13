@@ -232,7 +232,8 @@ class Gate:
     def _audit(self, tool: str, args: dict[str, Any], status: str, decided_by: str | None, reason: str) -> str | None:
         if self.store is None:
             return None
-        return self.store.record_approval(run_id=self.run_id, tool=tool, args=args, status=status,
+        from dayflow import tools as _tools            # read at call time: use_google() may have run since import
+        return self.store.record_approval(run_id=self.run_id, tool=tool, args=args, status=status, backend=_tools.BACKEND,
                                           decided_by=decided_by, reason=reason, ttl_hours=self.ttl_hours)
 
 
@@ -255,6 +256,15 @@ def approve(store: Store, approval_id: str) -> dict[str, Any]:
     if store.is_expired(row):
         store.decide_approval(approval_id, status="expired", decided_by="policy", reason="older than its TTL")
         raise ApprovalError(f"approval {approval_id} expired at {row['expires_at']}; run the brief again to get a fresh proposal")
+    # Lesson 87, found on the first real run: a draft proposed against Gmail was approved
+    # with MOCK=1, so the real message id was looked up in the fixture inbox. It failed only
+    # because that id happened not to exist there. Approve in the world the proposal came from.
+    from dayflow import tools as _tools
+    proposed_on = row["backend"]
+    if proposed_on and proposed_on != _tools.BACKEND:
+        how = "MOCK=0 dayflow approve" if proposed_on == "google" else "MOCK=1 dayflow approve"
+        raise ApprovalError(f"approval {approval_id} was proposed against {proposed_on}, but this command is running against "
+                            f"{_tools.BACKEND}. Nothing was done. Run: {how} {approval_id}")
     envelope = dispatch(row["tool"], json.loads(row["args"]))
     result = json.loads(envelope)
     if not result["ok"]:
