@@ -174,6 +174,8 @@ Things worth knowing before you run it:
   When that happens Dayflow says so and asks you to log in again.
 - **The token file** is `~/.config/dayflow/google_token.json`, mode 600 (`DAYFLOW_TOKEN_PATH` to
   move it). A file readable by other users is refused.
+- **Approve where you proposed.** Each proposal records its backend. `dayflow approve` under
+  `MOCK=1` refuses a proposal made against Google (and the reverse) and prints the command to run.
 - **Drafts are not sent.** `draft_reply` creates a draft in the original thread. You send it from
   Gmail. Gmail has no idempotency key for drafts, so the store keeps its own key-to-draft map.
 - **A run reads the newest 30 messages** from the last 3 days, skipping the Promotions and Social
