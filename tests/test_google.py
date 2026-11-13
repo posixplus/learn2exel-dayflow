@@ -277,15 +277,76 @@ def test_calendar_events_map_timed_and_all_day_and_skip_cancelled():
 
 # ── The tool surface ─────────────────────────────────────────────────────────
 def test_real_adapters_sit_behind_the_same_tools_and_envelope():
-    previous = (tools.inbox, tools.calendar)
+    previous = (tools.inbox, tools.calendar, tools.BACKEND)
     try:
         tools.use_google(FakeGoogle(2))
+        assert tools.BACKEND == "google"
         body = json.loads(tools.dispatch("read_inbox", {"limit": 5, "offset": 0}))
         assert body["ok"] is True and body["data"]["total"] == 2
         bad = json.loads(tools.dispatch("draft_reply", {"message_id": "nope", "body": "x", "idempotency_key": "k"}))
         assert bad["ok"] is False and bad["error"]["code"] == "unknown_message"
     finally:
-        tools.inbox, tools.calendar = previous
+        tools.inbox, tools.calendar, tools.BACKEND = previous
+
+
+@pytest.fixture
+def on_google(tmp_path):
+    """Tools pointed at a fake Google, with a real store, restored afterwards."""
+    from dayflow.store import Store
+    previous = (tools.inbox, tools.calendar, tools.BACKEND, tools.tasks)
+    store = Store(tmp_path / "g.db")
+    tools.use_store(store)
+    fake = FakeGoogle(2)
+    tools.use_google(fake, drafts=store)
+    yield store, fake
+    tools.inbox, tools.calendar, tools.BACKEND, tools.tasks = previous
+    store.close()
+
+
+def _queue_draft(store):
+    from dayflow import permissions
+    gate = permissions.gate_for("queue", store=store)
+    gate.call("draft_reply", {"message_id": "g0", "body": "Thanks, will do.", "idempotency_key": "k1"})
+    return store.list_approvals()[0]
+
+
+def test_a_proposal_remembers_the_backend_it_was_made_against(on_google):
+    store, _ = on_google
+    assert _queue_draft(store)["backend"] == "google"
+
+
+def test_a_google_proposal_cannot_be_approved_against_fixtures(on_google):
+    """What happened on the first real run: `dayflow approve` without MOCK=0 looked up a
+    real Gmail id in the fixture inbox. Now it refuses, says why, and stays pending."""
+    from dayflow import permissions
+    store, fake = on_google
+    row = _queue_draft(store)
+    tools.BACKEND = "fixtures"                                   # the next command forgot MOCK=0
+    with pytest.raises(permissions.ApprovalError, match=r"proposed against google.*running against fixtures.*MOCK=0 dayflow approve"):
+        permissions.approve(store, row["id"])
+    assert store.get_approval(row["id"])["status"] == "pending" and fake.drafts == []
+    tools.BACKEND = "google"                                     # run it in the right world
+    out = permissions.approve(store, row["id"])
+    assert out["data"]["created"] is True and len(fake.drafts) == 1
+
+
+def test_a_fixture_proposal_cannot_be_approved_against_google(on_google):
+    from dayflow import permissions
+    store, fake = on_google
+    tools.BACKEND = "fixtures"
+    row = _queue_draft(store)
+    tools.BACKEND = "google"
+    with pytest.raises(permissions.ApprovalError, match="MOCK=1 dayflow approve"):
+        permissions.approve(store, row["id"])
+    assert fake.drafts == []
+
+
+def test_a_proposal_from_before_the_column_existed_is_not_blocked(on_google):
+    from dayflow import permissions
+    store, fake = on_google
+    row = _queue_draft(store)
+    store._conn.execute("UPDATE approvals SET backend = NULL WHERE id = ?", (row["id"],))
+    assert permissions.approve(store, row["id"])["data"]["created"] is True
 
 
 def test_draft_reply_is_a_write_tool_so_the_gate_holds_it():

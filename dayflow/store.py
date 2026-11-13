@@ -134,6 +134,11 @@ class Store:
             self._conn.execute("ALTER TABLE runs ADD COLUMN session_id TEXT")
         if "attempts" not in {r["name"] for r in self._conn.execute("PRAGMA table_info(events)")}:
             self._conn.execute("ALTER TABLE events ADD COLUMN attempts INTEGER NOT NULL DEFAULT 1")   # lesson 91
+        # Lesson 87: which backend a write was proposed against. Rows from before this
+        # column exist can only have come from fixtures or from a database nobody can
+        # vouch for, so they get NULL and approve() treats NULL as "unknown, do not block".
+        if "backend" not in {r["name"] for r in self._conn.execute("PRAGMA table_info(approvals)")}:
+            self._conn.execute("ALTER TABLE approvals ADD COLUMN backend TEXT")
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -231,7 +236,7 @@ class Store:
 
     # ── approvals (lesson 86) ──
     def record_approval(self, *, run_id: str | None, tool: str, args: dict[str, Any], status: str,
-                        decided_by: str | None, reason: str, ttl_hours: float = 24) -> str:
+                        decided_by: str | None, reason: str, ttl_hours: float = 24, backend: str | None = None) -> str:
         """One row per write decision, whoever made it. 'pending' rows are the queue;
         every other status is the audit trail."""
         approval_id = "ap_" + uuid.uuid4().hex[:6]
@@ -239,10 +244,10 @@ class Store:
         stamp = now.isoformat(timespec="seconds")
         with self.tx() as c:
             c.execute(
-                "INSERT INTO approvals (id, run_id, tool, args, status, decided_by, reason, created_at, decided_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO approvals (id, run_id, tool, args, status, decided_by, reason, created_at, decided_at, expires_at, backend) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (approval_id, run_id, tool, json.dumps(args), status, decided_by, reason, stamp,
                  None if status == "pending" else stamp,
-                 (now + timedelta(hours=ttl_hours)).isoformat(timespec="seconds")),
+                 (now + timedelta(hours=ttl_hours)).isoformat(timespec="seconds"), backend),
             )
         return approval_id
 
