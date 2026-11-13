@@ -34,6 +34,10 @@ from dayflow.permissions import Gate, Policy
 from dayflow.store import Store, StepRow
 from dayflow.tools import definitions
 
+API_RETRIES = int(os.environ.get("DAYFLOW_API_RETRIES", "4"))
+API_TIMEOUT_S = float(os.environ.get("DAYFLOW_API_TIMEOUT", "120"))
+# Worth trying again later. Auth and bad-request errors are not in this list on purpose.
+TRANSIENT_API_ERRORS = (anthropic.APIConnectionError, anthropic.RateLimitError, anthropic.InternalServerError)
 DEFAULT_MODEL = os.environ.get("DAYFLOW_MODEL", "claude-sonnet-5-5")
 
 
@@ -91,8 +95,8 @@ def _outcome(output: str) -> dict[str, Any]:
     try:
         env = json.loads(output)
     except (TypeError, ValueError):
-        return {"ok": None, "code": None}
-    return {"ok": env.get("ok"), "code": (env.get("error") or {}).get("code")}
+        return {"ok": None, "code": None, "attempts": 1}
+    return {"ok": env.get("ok"), "code": (env.get("error") or {}).get("code"), "attempts": env.get("attempts", 1)}
 
 
 def run(
@@ -161,7 +165,10 @@ def _drive(
     client: anthropic.Anthropic | None, verbose: bool, tools: list[dict[str, Any]] | None,
     store: Store | None, crash_after_step: int | None, gate: Gate | None = None,
 ) -> RunResult:
-    client = client or anthropic.Anthropic()
+    # Lesson 91: say what the SDK does instead of inheriting it. It already retries 429,
+    # 5xx and connection errors with backoff; a second retry loop of ours on top would
+    # multiply the waits. What we add is a ceiling on one call and a clean failure after.
+    client = client or anthropic.Anthropic(max_retries=API_RETRIES, timeout=API_TIMEOUT_S)
     tools = definitions() if tools is None else tools
     # No gate passed means the safe default: writes are queued, never run unasked.
     # A caller that wants the old behaviour has to say Policy("allow") out loud.
@@ -177,13 +184,19 @@ def _drive(
     cache = os.environ.get("DAYFLOW_CACHE", "1") == "1"
     for step in range(start_step, max_steps + 1):
         t0 = time.perf_counter()
-        resp = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=_cached_system(system) if cache else system,
-            tools=tools,
-            messages=_cached_tail(messages) if cache else messages,
-        )
+        try:
+            resp = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=_cached_system(system) if cache else system,
+                tools=tools,
+                messages=_cached_tail(messages) if cache else messages,
+            )
+        except TRANSIENT_API_ERRORS as e:
+            # The SDK's retries are spent. Steps 1..step-1 are committed, so nothing is lost:
+            # mark the run failed with a reason and let `dayflow resume` pick it up at this step.
+            raise fail(f"api unavailable at step {step} after {API_RETRIES} retries ({type(e).__name__}); "
+                       f"nothing was lost, continue with `dayflow resume`") from e
         ms = int((time.perf_counter() - t0) * 1000)
         # Lesson 90: with prompt caching, input_tokens is only the UNCACHED part. The
         # budget must count every token the model read, or caching would quietly raise it.
@@ -231,7 +244,8 @@ def _drive(
             tool_log.append({"step": step, "tool": block["name"], "args": block["input"], **outcome})
             if store and run_id:
                 store.record_event(run_id, step=step, kind="tool", name=block["name"],
-                                   ms=int((time.perf_counter() - t1) * 1000), ok=outcome["ok"], code=outcome["code"])
+                                   ms=int((time.perf_counter() - t1) * 1000), ok=outcome["ok"], code=outcome["code"],
+                                   attempts=outcome["attempts"])
             if verbose:
                 print(f"    -> {block['name']}({block['input']}) {len(output)} chars")
             results.append({"type": "tool_result", "tool_use_id": block["id"], "content": output})

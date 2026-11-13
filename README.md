@@ -253,3 +253,22 @@ DAYFLOW_CACHE=0 dayflow brief   # turn prompt caching off to see what it saves
 - Measured on the fixtures, Sonnet 5.5: $0.041 per run uncached, $0.032 for a cold cached run,
   about $0.024 warm. Haiku 5.5: about $0.002.
 
+## Reliability (lesson 91)
+
+```bash
+DAYFLOW_FAULTS="read_inbox=2" dayflow brief        # inbox fails twice, then works: retried, invisible to the model
+DAYFLOW_FAULTS="read_inbox=always" dayflow brief   # an outage: the brief says so and carries on with the rest
+DAYFLOW_FAULTS="read_calendar=auth" dayflow brief  # a 401: reported at once, never retried
+dayflow eval --suite degraded -n 5                 # does it degrade honestly? (inbox down for the whole run)
+```
+
+- `dayflow/retry.py`: exponential backoff with full jitter, capped, with a hard attempt limit.
+- `tools.dispatch()` retries a failing READ up to 3 times when the error is retryable. A WRITE is
+  never retried automatically. `_classify()` decides what is retryable: 429, 5xx, timeouts and
+  connection errors are; 401, 403, 404 and unexpected exceptions (bugs) are not.
+- `dayflow/faults.py`: fault injection for the fixture tools, off unless `DAYFLOW_FAULTS` is set.
+- The Anthropic client is built with explicit `max_retries` and `timeout` (`DAYFLOW_API_RETRIES`,
+  `DAYFLOW_API_TIMEOUT`). When those are spent the run is marked failed with a reason and
+  `dayflow resume` continues from the last committed step.
+- `dayflow trace` shows `ok (after 3 attempts)` on a retried call.
+

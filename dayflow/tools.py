@@ -15,9 +15,11 @@ Three rules, each enforced here rather than hoped for in the prompt:
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
+from dayflow import faults, retry
 from dayflow.adapters.fixtures import FixtureCalendar, FixtureInbox, FixtureTasks, _load
 
 Kind = Literal["read", "write"]
@@ -187,26 +189,64 @@ TOOLS = definitions()
 
 
 # ── Dispatch and the result envelope ─────────────────────────────────────────
-def _ok(data: Any) -> str:
-    return json.dumps({"ok": True, "data": data})
+def _ok(data: Any, attempts: int = 1) -> str:
+    return json.dumps({"ok": True, "data": data, **({"attempts": attempts} if attempts > 1 else {})})
 
 
-def _err(code: str, message: str, *, retryable: bool) -> str:
-    return json.dumps({"ok": False, "error": {"code": code, "message": message, "retryable": retryable}})
+def _err(code: str, message: str, *, retryable: bool, attempts: int = 1) -> str:
+    return json.dumps({"ok": False, "error": {"code": code, "message": message, "retryable": retryable},
+                       **({"attempts": attempts} if attempts > 1 else {})})
+
+
+# Lesson 91: how hard dispatch() tries before it reports a failure. Reads only.
+READ_RETRY = retry.Backoff(attempts=3, base=0.5, cap=4.0)
+_sleep = time.sleep           # tests replace this so the suite does not actually wait
+
+
+def _classify(e: Exception) -> ToolError:
+    """Turn whatever an adapter raised into a ToolError that says whether trying again
+    could help. Before lesson 91 every unknown exception was 'retryable', including a
+    revoked token, which no amount of retrying fixes."""
+    if isinstance(e, ToolError):
+        return e
+    status = getattr(e, "status", None)                    # adapters.google.GoogleError carries one
+    if status in (401, 403):
+        return ToolError("auth", f"access was refused ({status}); run `dayflow auth status`", retryable=False)
+    if status == 429 or (isinstance(status, int) and status >= 500):
+        return ToolError("upstream_unavailable", f"upstream returned {status}", retryable=True)
+    if isinstance(status, int):
+        return ToolError("upstream_rejected", f"upstream returned {status}: {e}", retryable=False)
+    if isinstance(e, (TimeoutError, ConnectionError, OSError)):
+        return ToolError("upstream_unavailable", f"{type(e).__name__}: {e}", retryable=True)
+    return ToolError("tool_failed", f"{type(e).__name__}: {e}", retryable=False)   # a bug: retrying repeats it
 
 
 def dispatch(name: str, args: dict[str, Any]) -> str:
     """Run a tool and return a JSON envelope. Never raises: a failing tool is
-    information the model needs, not a reason to kill the run."""
+    information the model needs, not a reason to kill the run.
+
+    Lesson 91: a READ that fails with a retryable error is tried again with backoff
+    before the model hears about it. A WRITE never is; its envelope says retryable
+    and the decision goes back up to the model and the human."""
     tool = REGISTRY.get(name)
     if tool is None:
         # Strict mode makes this unreachable from the API; keep it for direct callers.
         return _err("unknown_tool", f"no tool named {name!r}", retryable=False)
+
+    def once() -> Any:
+        try:
+            faults.maybe_fail(name)
+            return tool.handler(**args)
+        except TypeError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            raise _classify(e) from e
+
+    policy = READ_RETRY if tool.kind == "read" else retry.Backoff(attempts=1)
     try:
-        return _ok(tool.handler(**args))
+        data, attempts = retry.call(once, policy=policy, retry_if=lambda e: isinstance(e, ToolError) and e.retryable, sleep=_sleep)
+        return _ok(data, attempts)
     except TypeError as e:
         return _err("bad_arguments", str(e), retryable=False)
     except ToolError as e:
-        return _err(e.code, e.message, retryable=e.retryable)
-    except Exception as e:  # noqa: BLE001 - lesson 91 adds retries on retryable=True
-        return _err("tool_failed", f"{type(e).__name__}: {e}", retryable=True)
+        return _err(e.code, e.message, retryable=e.retryable, attempts=getattr(e, "attempts", 1))

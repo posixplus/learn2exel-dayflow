@@ -94,5 +94,7 @@ def test_tool_exception_becomes_error_result(monkeypatch):
     result_block = client.calls[1]["messages"][-1]["content"][0]
     env = json.loads(result_block["content"])
     assert env["ok"] is False
-    assert env["error"]["retryable"] is True
+    # Lesson 91: an unexpected exception is a bug in the tool. It used to be reported as
+    # retryable; retrying a bug repeats it, so it is now tool_failed / retryable False.
+    assert env["error"]["code"] == "tool_failed" and env["error"]["retryable"] is False
     assert "inbox unavailable" in env["error"]["message"]
