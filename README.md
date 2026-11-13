@@ -272,3 +272,27 @@ dayflow eval --suite degraded -n 5                 # does it degrade honestly? (
   `dayflow resume` continues from the last committed step.
 - `dayflow trace` shows `ok (after 3 attempts)` on a retried call.
 
+## Dayflow as an MCP server (lesson 92)
+
+```bash
+dayflow mcp               # serve the five tools over MCP on stdio
+dayflow mcp --read-only   # the three read tools only
+```
+
+Register it with any MCP client. For Claude Code, from this folder (I did not run this exact
+command; check `claude mcp add --help` for your version):
+
+```bash
+claude mcp add dayflow -- dayflow mcp
+```
+
+- `dayflow/mcp_server.py` lists `tools.REGISTRY` unchanged (same names, descriptions and strict
+  schemas) and sends every call through the same `Gate`.
+- Writes are always queued. The client's model gets `pending_approval` and an id; the user runs
+  `dayflow approve <id>`. There is deliberately no approve tool.
+- Each client session is a run of kind `mcp`: its proposals are grouped, and the per-run write
+  limit and the lesson 88 content rules apply to it.
+- `MOCK=0 dayflow mcp` serves real Gmail and Calendar (lesson 87 sign-in required).
+- stdout is the protocol. Logging goes to stderr.
+- Python only. Needs `mcp>=2.0`.
+
