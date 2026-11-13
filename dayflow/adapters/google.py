@@ -10,8 +10,12 @@ adapter does about each:
   Paging     Gmail pages with an opaque token, our tool pages with offset.
              The adapter lists message ids once per run and slices that list.
   Bodies     A Gmail message is a MIME tree, base64url encoded. The adapter
-             finds the text/plain part and cuts it at MAX_BODY_CHARS: the model
-             does not need a 40 KB newsletter, and you do not want to pay for it.
+             finds the text/plain part, collapses whitespace and cuts it at
+             MAX_BODY_CHARS: the model does not need a 40 KB newsletter, and you
+             do not want to pay for it.
+  Volume     A fixture inbox has five messages. A real one has hundreds. The
+             query skips Promotions and Social and a run sees the newest
+             MAX_LISTED only, and says so in the result when it was cut.
   Idempotency  drafts.create has no idempotency key. The adapter remembers
              key -> draft id itself (in the store), so a retried or re-approved
              draft_reply cannot create two drafts.
@@ -22,6 +26,8 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -33,9 +39,14 @@ from typing import Any, Callable
 GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me"
 CALENDAR = "https://www.googleapis.com/calendar/v3/calendars/primary"
 
-MAX_BODY_CHARS = 1500          # per message, after decoding
-INBOX_QUERY = "in:inbox newer_than:3d"
-MAX_LISTED = 200               # ids fetched per run; the tool still pages 50 at a time
+# These three were 1500, "in:inbox newer_than:3d" and 200, sized against a five-message
+# fixture. The first run on a real inbox read about 200 messages, passed 400,000 input
+# tokens by step 6 and was stopped by the token budget every time. A brief needs the gist
+# of recent mail a person would read, so: skip the Promotions and Social tabs, keep the
+# newest MAX_LISTED, and keep the opening of each body. All three can be overridden.
+MAX_BODY_CHARS = int(os.environ.get("DAYFLOW_BODY_CHARS", "400"))       # per message, after decoding
+INBOX_QUERY = os.environ.get("DAYFLOW_INBOX_QUERY", "in:inbox newer_than:3d -category:promotions -category:social")
+MAX_LISTED = int(os.environ.get("DAYFLOW_INBOX_MAX", "30"))             # newest N messages a run can see
 
 # (method, url, query params, json body) -> parsed JSON
 Http = Callable[[str, str, dict[str, Any] | None, dict[str, Any] | None], dict[str, Any]]
@@ -93,7 +104,9 @@ def _plain_text(payload: dict[str, Any]) -> str:
 def to_message(raw: dict[str, Any]) -> dict[str, Any]:
     """Gmail message resource -> the fixture shape {id, from, subject, date, body}."""
     payload = raw.get("payload", {})
-    body = _plain_text(payload).strip() or raw.get("snippet", "")
+    # Collapse whitespace first: plain-text mail is full of blank lines and indentation
+    # that cost tokens and say nothing.
+    body = re.sub(r"\s+", " ", _plain_text(payload)).strip() or raw.get("snippet", "")
     if len(body) > MAX_BODY_CHARS:
         body = body[:MAX_BODY_CHARS] + f"... [truncated, {len(body)} chars total]"
     when = datetime.fromtimestamp(int(raw.get("internalDate", "0")) / 1000, tz=timezone.utc)
@@ -110,13 +123,14 @@ class GmailInbox:
     def __init__(self, http: Http, *, drafts: Any = None, query: str = INBOX_QUERY) -> None:
         self._http, self._drafts, self._query = http, drafts, query
         self._ids: list[str] | None = None      # listed once per run, then sliced by offset
+        self._more = False                      # the query matched more than MAX_LISTED
 
     def _list_ids(self) -> list[str]:
         if self._ids is None:
             ids: list[str] = []
             token: str | None = None
             while len(ids) < MAX_LISTED:
-                params: dict[str, Any] = {"q": self._query, "maxResults": 100}
+                params: dict[str, Any] = {"q": self._query, "maxResults": min(100, MAX_LISTED)}
                 if token:
                     params["pageToken"] = token
                 page = self._http("GET", f"{GMAIL}/messages", params, None)
@@ -124,6 +138,7 @@ class GmailInbox:
                 token = page.get("nextPageToken")
                 if not token:
                     break
+            self._more = bool(token) or len(ids) > MAX_LISTED
             self._ids = ids[:MAX_LISTED]
         return self._ids
 
@@ -132,7 +147,12 @@ class GmailInbox:
         page = ids[offset:offset + limit]
         messages = [to_message(self._http("GET", f"{GMAIL}/messages/{i}", {"format": "full"}, None)) for i in page]
         nxt = offset + limit
-        return {"messages": messages, "total": len(ids), "next_offset": nxt if nxt < len(ids) else None}
+        out: dict[str, Any] = {"messages": messages, "total": len(ids), "next_offset": nxt if nxt < len(ids) else None}
+        if self._more:
+            # Say so. A brief built on a capped listing must not read as "this is everything".
+            out["note"] = (f"Only the newest {len(ids)} matching messages are listed; older ones were not read. "
+                           "Tell the user the brief covers the newest mail only.")
+        return out
 
     def create_draft(self, *, message_id: str, body: str, idempotency_key: str) -> dict[str, Any]:
         """A reply DRAFT in the original thread. Nothing is sent: the user reads it in
