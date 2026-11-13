@@ -216,7 +216,8 @@ def main(argv: list[str] | None = None) -> int:
         for row in rows:
             stale = "  EXPIRED" if row["status"] == "pending" and store.is_expired(row) else ""
             who = f" by {row['decided_by']}" if row["decided_by"] else ""
-            print(f"{row['id']}  {row['status']}{who}{stale}  {row['tool']}  run {row['run_id']}  {row['created_at']}")
+            where = f"  [{row['backend']}]" if row["backend"] else ""
+            print(f"{row['id']}  {row['status']}{who}{stale}  {row['tool']}{where}  run {row['run_id']}  {row['created_at']}")
             for k, v in json.loads(row["args"]).items():
                 print(f"    {k}: {v!r}")
             if row["reason"] and (args.all or row["status"] == "pending"):
