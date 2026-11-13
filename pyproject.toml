@@ -1,6 +1,6 @@
 [project]
 name = "dayflow"
-version = "0.92.0"
+version = "1.0.0"
 description = "Dayflow - the personal ops agent built across Learn2Exel Level 10 (Agentic AI Engineer)"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+keychain = ["keyring>=24"]
 
 [project.scripts]
 dayflow = "dayflow.main:main"
