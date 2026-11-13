@@ -75,6 +75,21 @@ CREATE TABLE IF NOT EXISTS drafts (
   draft          TEXT NOT NULL,           -- JSON: {draft_id, to, subject}
   created_at     TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS events (
+  run_id        TEXT NOT NULL,            -- lesson 90: one row per model call and per tool call
+  step          INTEGER NOT NULL,
+  kind          TEXT NOT NULL,            -- model | tool
+  name          TEXT NOT NULL,            -- model id, or tool name
+  ms            INTEGER NOT NULL,         -- wall time of this call
+  input_tokens  INTEGER NOT NULL DEFAULT 0,   -- uncached input (model rows only)
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cache_read    INTEGER NOT NULL DEFAULT 0,   -- input tokens served from the prompt cache
+  cache_write   INTEGER NOT NULL DEFAULT 0,   -- input tokens written to it
+  ok            INTEGER,                  -- tool rows: 1/0.  model rows: NULL
+  code          TEXT,                     -- tool rows: refusal or error code.  model rows: stop_reason
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS events_run ON events(run_id, step);
 CREATE TABLE IF NOT EXISTS tasks (
   id              TEXT PRIMARY KEY,
   title           TEXT NOT NULL,
@@ -163,6 +178,19 @@ class Store:
                 "UPDATE runs SET session_id=?, input_tokens=?, output_tokens=?, updated_at=? WHERE id=?",
                 (session_id, input_tokens, output_tokens, _now(), run_id),
             )
+
+    # ── events (lesson 90) ──
+    def record_event(self, run_id: str, *, step: int, kind: str, name: str, ms: int, input_tokens: int = 0,
+                     output_tokens: int = 0, cache_read: int = 0, cache_write: int = 0,
+                     ok: bool | None = None, code: str | None = None) -> None:
+        self._conn.execute(
+            "INSERT INTO events (run_id, step, kind, name, ms, input_tokens, output_tokens, cache_read, cache_write, ok, code, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (run_id, step, kind, name, ms, input_tokens, output_tokens, cache_read, cache_write,
+             None if ok is None else int(ok), code, _now()))
+
+    def events(self, run_id: str) -> list[sqlite3.Row]:
+        return self._conn.execute("SELECT rowid, * FROM events WHERE run_id = ? ORDER BY rowid", (run_id,)).fetchall()
 
     # ── steps ──
     def append_step(self, run_id: str, step: StepRow) -> None:

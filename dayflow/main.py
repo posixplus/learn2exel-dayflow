@@ -148,6 +148,10 @@ def main(argv: list[str] | None = None) -> int:
     au = sub.add_parser("auth", help="Google sign-in for MOCK=0 (lesson 87)")
     au.add_argument("action", choices=["login", "status", "logout"])
     au.add_argument("--drafts", action="store_true", help="login: also ask for permission to create drafts (gmail.compose)")
+    tr = sub.add_parser("trace", help="Show one run step by step: time, tokens, cost (lesson 90)")
+    tr.add_argument("run_id", nargs="?", default=None, help="default: the latest run")
+    st = sub.add_parser("stats", help="Recent runs: failures, latency, tokens, cost (lesson 90)")
+    st.add_argument("--last", type=int, default=50)
     ev = sub.add_parser("eval", help="Run the eval suites against the real model (lesson 89)")
     ev.add_argument("--suite", choices=["clean", "redteam", "all"], default="all")
     ev.add_argument("-n", type=int, default=3, help="trials per case (default 3; use 10+ before believing a rate)")
@@ -176,6 +180,19 @@ def main(argv: list[str] | None = None) -> int:
         except oauth.OAuthError as e:
             print(f"google: {e}", file=sys.stderr)
             return 3
+
+    if args.cmd in ("trace", "stats"):
+        from dayflow import observe
+        if args.cmd == "stats":
+            print(observe.stats(store, last=args.last))
+            return 0
+        latest = store.latest_run()
+        run_id = args.run_id or (latest["id"] if latest else None)
+        if not run_id or store.get_run(run_id) is None:
+            print("no such run" if args.run_id else "no runs recorded", file=sys.stderr)
+            return 1
+        print(observe.trace(store, run_id))
+        return 0
 
     if args.cmd == "runs":
         rows = store._conn.execute("SELECT id, status, created_at, input_tokens, output_tokens, (SELECT COUNT(*) FROM steps WHERE run_id = runs.id) AS n FROM runs ORDER BY created_at DESC LIMIT 10").fetchall()
@@ -304,9 +321,13 @@ def main(argv: list[str] | None = None) -> int:
         print(result.text)
         _link_note(result.text)
         _pending_note(store, result.run_id)
+        from dayflow import observe
+        spent = observe.run_cost(store, result.run_id)
+        price = f" · ${spent['usd']:.4f}" if spent["usd"] is not None else " · cost n/a (no price for this model)"
         print(
             f"\n[{result.steps} steps · {len(result.tool_calls)} tool calls · "
-            f"{result.input_tokens} in / {result.output_tokens} out · run {result.run_id}]",
+            f"{result.input_tokens} in ({spent['cache_read']} cached) / {result.output_tokens} out{price} · "
+            f"run {result.run_id} · `dayflow trace` for the breakdown]",
             file=sys.stderr,
         )
     return 0
